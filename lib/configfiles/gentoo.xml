@@ -2508,10 +2508,6 @@ account     required    pam_mysql.so user=<SQL_UNPRIVILEGED_USER> passwd=<SQL_UN
 				<!-- libnss-extrausers -->
 				<daemon name="libnssextrausers"
 					title="libnss-extrausers">
-					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose app-eselect/eselect-repository]]></install>
-					<install><![CDATA[mkdir -p /etc/portage/repos.conf]]></install>
-					<install><![CDATA[eselect repository add froxlor git https://github.com/Froxlor/Gentoo-Ebuild.git]]></install>
-					<install><![CDATA[emaint sync -r froxlor]]></install>
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose sys-auth/libnss-extrausers]]></install>
 					<commands index="1">
 						<command><![CDATA[mkdir -p /var/lib/extrausers]]></command>
