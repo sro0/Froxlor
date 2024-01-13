@@ -2312,10 +2312,12 @@ BanOnEvent AnonRejectPasswords 1/01:00:00 99:99:99
 BanControlsACLs all allow user root
 </IfModule>
 
-<IfClass whitelist>
-BanEngine off
-DelayEngine off
-</IfClass>
+<IfModule mod_ban.c>
+	<IfClass whitelist>
+		BanEngine off
+		DelayEngine off
+	</IfClass>
+</IfModule>
 ]]>
 						</content>
 					</file>
