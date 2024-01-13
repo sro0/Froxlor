@@ -1558,7 +1558,7 @@ root:               <ADMIN_MAIL>
 					title="Postfix 3 with dovecot" default="true">
 					<include>//service[@type='smtp']/general/commands[@index=1]
 					</include>
-					<command><![CDATA[echo "mail-mta/postfix dovecot-sasl -sasl" >> /etc/portage/package.use/froxlor]]></command>
+					<command><![CDATA[echo "mail-mta/postfix dovecot-sasl mysql" >> /etc/portage/package.use/froxlor]]></command>
 					<include>//service[@type='smtp']/general/installs[@index=1]
 					</include>
 					<include>//service[@type='smtp']/general/commands[@index=2]
