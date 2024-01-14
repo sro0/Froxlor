@@ -2607,7 +2607,7 @@ aliases:     files
 					<install>
 						<visibility mode="true">{{settings.phpfpm.enabled}}
 						</visibility>
-						<command><![CDATA[echo "www-servers/apache apache2_modules_proxy_fcgi" >> /etc/portage/package.use/froxlor]]></command>
+						<content><![CDATA[echo "www-servers/apache apache2_modules_proxy_fcgi" >> /etc/portage/package.use/froxlor]]></content>
 					</install>
 					<commands index="2">
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
