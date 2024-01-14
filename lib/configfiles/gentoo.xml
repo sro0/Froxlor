@@ -2597,12 +2597,12 @@ aliases:     files
 					<commands index="1">
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<command><![CDATA[echo "www-servers/apache suexec" >> /etc/portage/package.use/froxlor]]></command>
+						<command><![CDATA[echo "www-servers/apache suexec apache2_modules_proxy apache2_modules_proxy_fcgi" >> /etc/portage/package.use/froxlor]]></command>
 					</commands>
 					<install>
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache www-apache/mod_fastcgi_handler]]></content>
+						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache]]></content>
 					</install>
 					<install>
 						<visibility mode="true">{{settings.phpfpm.enabled}}
