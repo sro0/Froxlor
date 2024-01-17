@@ -2538,7 +2538,7 @@ plugin {
 				</general>
 				<daemon name="dovecot_postfix" version="2" title="Dovecot"
 					default="true">
-					<command><![CDATA[echo "net-mail/dovecot argon2 mysql managesieve sieve" >> /etc/portage/package.use/froxlor]]></command>
+					<command><![CDATA[echo "net-mail/dovecot argon2 mysql" >> /etc/portage/package.use/froxlor]]></command>
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose net-mail/dovecot]]></install>
 					<include>//service[@type='mail']/general/files[@index=1]
 					</include>
