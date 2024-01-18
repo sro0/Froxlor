@@ -2453,7 +2453,7 @@ dovecot	  unix	-	n	n	-	-	pipe
 			<!-- IMAP/POP3 services -->
 			<service type="mail" title="{{lng.admin.configfiles.mail}}">
 				<!-- Dovecot -->
-								<general>
+				<general>
 					<files index="1">
 						<file name="/etc/dovecot/dovecot-sql.conf.ext"
 							chown="root:root" chmod="0600" backup="true">
@@ -2543,6 +2543,9 @@ plugin {
 					<include>//service[@type='mail']/general/files[@index=1]
 					</include>
 					<command><![CDATA[if [ ! -f /etc/dovecot/dh.pem ]; then openssl dhparam -out /etc/dovecot/dh.pem 3072; fi]]></command>
+					<!-- Restrict access to vmail user (vmail uid may be lower than default value 500 -> set it here) -->
+					<command><![CDATA[sed -i.bak 's/^[#[:blank:]]*first_valid_uid[[:blank:]]*=.*$/first_valid_uid = {{settings.system.vmail_uid}}/' /etc/dovecot/conf.d/10-mail.conf]]></command>
+					<command><![CDATA[sed -i.bak 's/^[#[:blank:]]*last_valid_uid[[:blank:]]*=.*$/last_valid_uid = {{settings.system.vmail_uid}}/' /etc/dovecot/conf.d/10-mail.conf]]></command>
 					<include>//service[@type='mail']/general/commands[@index=1]
 					</include>
 					<command><![CDATA[rc-update add dovecot default]]></command>
