@@ -2460,7 +2460,6 @@ dovecot	  unix	-	n	n	-	-	pipe
 							<content><![CDATA[
 driver = mysql
 connect = "host=<SQL_HOST> dbname=<SQL_DB> user=<SQL_UNPRIVILEGED_USER> password=<SQL_UNPRIVILEGED_PASSWORD>"
-#default_pass_scheme = CRYPT
 user_query = SELECT CONCAT(homedir, maildir) AS home, CONCAT('maildir:', homedir, maildir) AS mail, uid, gid, CONCAT('*:storage=', quota, 'M') as quota_rule FROM mail_users WHERE (username = '%u' OR email = '%u')
 password_query = SELECT username AS user, password_enc AS password, CONCAT(homedir, maildir) AS userdb_home, uid AS userdb_uid, gid AS userdb_gid,  CONCAT('maildir:', homedir, maildir) AS userdb_mail, CONCAT('*:storage=', quota, 'M') as userdb_quota_rule FROM mail_users WHERE (username = '%u' OR email = '%u') AND ((imap = 1 AND '%Ls' = 'imap') OR (pop3 = 1 AND '%Ls' = 'pop3') OR ((postfix = 'Y' AND '%Ls' = 'smtp') OR (postfix = 'Y' AND '%Ls' = 'sieve')))
 iterate_query = "SELECT username AS user FROM mail_users WHERE (imap = 1 OR pop3 = 1)"
@@ -2487,22 +2486,16 @@ service auth {
     user = postfix
     group = postfix
   }
-  # Exim4 smtp-auth
-  unix_listener auth-client {
-    mode = 0660
-    user = mail
-    #group = Debian-exim
-  }
 }
 
 service stats {
   unix_listener stats-reader {
     group = vmail
-    mode = 0666
+    mode = 0660
   }
   unix_listener stats-writer {
     group = vmail
-    mode = 0666
+    mode = 0660
   }
 }
 
@@ -2510,6 +2503,7 @@ ssl = yes
 ssl_cert = <<SSL_CERT_FILE>
 ssl_key = <<SSL_KEY_FILE>
 ssl_dh = </etc/dovecot/dh.pem
+ssl_prefer_server_ciphers = yes
 
 postmaster_address = postmaster@<SERVERNAME>
 
