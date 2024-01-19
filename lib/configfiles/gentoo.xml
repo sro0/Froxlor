@@ -2701,99 +2701,93 @@ chmod 0600 /etc/ssl/private/proftpd.key /etc/ssl/private/proftpd_ec.key
 					<file name="/etc/proftpd/proftpd.conf" chown="root:0"
 						chmod="0600" backup="true">
 						<content><![CDATA[
-# Server settings
-ServerName				"<SERVERNAME> FTP Server"
-ServerType				standalone
-ServerIdent				off
+#
+# /etc/proftpd/proftpd.conf -- This is a basic ProFTPD configuration file.
+# To really apply changes, reload proftpd after modifications, if
+# it runs in daemon mode. It is not required in inetd/xinetd mode.
+#
+
+# Set off to disable IPv6 support which is annoying on IPv4 only boxes.
+UseIPv6				on
+# If set on you can experience a longer connection delay in many cases.
+<IfModule mod_ident.c>
+	IdentLookups				off
+</IfModule>
+
+ServerName                     "<SERVERNAME> FTP Server"
+ServerType			standalone
+DeferWelcome			off
+
 DefaultServer			on
-Port					21
-MaxInstances			50
-
-# General settings
-DeferWelcome			on
 ShowSymlinks			on
-AllowOverwrite			on
-AllowStoreRestart		on
-AllowRetrieveRestart		on
-ListOptions				"-al"
-DisplayChdir			.message
-UseIPv6				off
 
-# Modules settings
-#DelayEngine				off
-
-# Timeout settings
-TimeoutLogin			120
 TimeoutNoTransfer		600
 TimeoutStalled			600
-TimeoutIdle				600
+TimeoutIdle			1200
 
-# Security settings
+DisplayLogin                    welcome.msg
+DisplayChdir               	.message true
+ListOptions                	"-l"
+
+DenyFilter			\*.*/
+
 RootLogin				off
+
+# Use this to jail all users in their homes
+DefaultRoot			~
+
+# Users require a valid shell listed in /etc/shells to login.
+# Use this directive to release that constrain.
 RequireValidShell		off
-User					nobody
-Group					nogroup
-Umask					133 022
-DefaultRoot				~
-DenyFilter				\*.*/
 
-# Per-Directory settings
-<Directory /*>
-Umask					133 022
+# Port 21 is the standard FTP port.
+Port				21
+
+# In some cases you have to specify passive ports range to by-pass
+# firewall limitations. Ephemeral ports can be used for that, but
+# feel free to use a more narrow range.
+# PassivePorts                  49152 65534
+
+# If your host was NATted, this option is useful in order to
+# allow passive transfers to work. You have to use your public
+# address and opening the passive ports used on your firewall as well.
+# MasqueradeAddress		1.2.3.4
+
+# This is useful for masquerading address with dynamic IPs:
+# refresh any configured MasqueradeAddress directives every 8 hours
+<IfModule mod_dynmasq.c>
+# DynMasqRefresh 28800
+</IfModule>
+
+# To prevent DoS attacks, set the maximum number of child processes
+# to 30.  If you need to allow more than 30 concurrent connections
+# at once, simply increase this value.  Note that this ONLY works
+# in standalone mode, in inetd mode you should use an inetd server
+# that allows you to limit maximum number of processes per service
+# (such as xinetd)
+MaxInstances			30
+
+# Set the user and group that the server normally runs at.
+User				nobody
+Group				nogroup
+
+# Umask 022 is a good standard umask to prevent new files and dirs
+# (second parm) from being group and world writable.
+Umask				026  027
+# Normally, we want files to be overwritable.
 AllowOverwrite			on
-</Directory>
 
-# SQL settings
-SQLAuthTypes Crypt OpenSSL
-SQLAuthenticate users* groups*
-SQLConnectInfo <SQL_DB>@<SQL_HOST> <SQL_UNPRIVILEGED_USER> <SQL_UNPRIVILEGED_PASSWORD>
-SQLUserInfo ftp_users username password uid gid homedir shell
-SQLGroupInfo ftp_groups groupname gid members
-SQLUserWhereClause "login_enabled = 'y'"
+# Uncomment this if you are using NIS or LDAP via NSS to retrieve passwords:
+# PersistentPasswd		off
 
-SQLLog PASS login
-SQLNamedQuery login UPDATE "last_login=now(), login_count=login_count+1 WHERE username='%u'" ftp_users
+# This is required to use both PAM-based authentication and local passwords
+# AuthOrder			mod_auth_pam.c* mod_auth_unix.c
 
-SQLLog RETR download
-SQLNamedQuery download UPDATE "down_count=down_count+1, down_bytes=down_bytes+%b WHERE username='%u'" ftp_users
-
-SQLLog STOR upload
-SQLNamedQuery upload UPDATE "up_count=up_count+1, up_bytes=up_bytes+%b WHERE username='%u'" ftp_users
-
-# Quota settings
-<IfModule mod_quotatab.c>
-	<IfModule mod_quotatab_sql.c>
-		QuotaEngine on
-		QuotaShowQuotas on
-		QuotaDisplayUnits Mb
-		QuotaLock /var/lock/ftpd.quotatab.lock
-		QuotaLimitTable sql:/get-quota-limit
-		QuotaTallyTable sql:/get-quota-tally/update-quota-tally/insert-quota-tally
-		SQLNamedQuery get-quota-limit SELECT "ftp_users.username AS name, ftp_quotalimits.quota_type, ftp_quotalimits.per_session, ftp_quotalimits.limit_type, panel_customers.diskspace*1024 AS bytes_in_avail, ftp_quotalimits.bytes_out_avail, ftp_quotalimits.bytes_xfer_avail, ftp_quotalimits.files_in_avail, ftp_quotalimits.files_out_avail, ftp_quotalimits.files_xfer_avail FROM ftp_users, ftp_quotalimits, panel_customers WHERE ftp_users.username = '%{0}' AND panel_customers.loginname = SUBSTRING_INDEX('%{0}', 'ftp', 1) AND quota_type ='%{1}'"
-		SQLNamedQuery get-quota-tally SELECT "name, quota_type, bytes_in_used,bytes_out_used, bytes_xfer_used, files_in_used, files_out_used,files_xfer_used FROM ftp_quotatallies WHERE name = '%{0}' AND quota_type = '%{1}'"
-		SQLNamedQuery update-quota-tally UPDATE "bytes_in_used = bytes_in_used + %{0}, bytes_out_used = bytes_out_used + %{1}, bytes_xfer_used = bytes_xfer_used + %{2}, files_in_used = files_in_used + %{3}, files_out_used= files_out_used + %{4}, files_xfer_used = files_xfer_used + %{5} WHERE name= '%{6}' AND quota_type = '%{7}'" ftp_quotatallies
-		SQLNamedQuery insert-quota-tally INSERT "%{0}, %{1}, %{2}, %{3}, %{4},%{5}, %{6}, %{7}" ftp_quotatallies
-	</IfModule>
-</IfModule>
-
-# TLS settings
-<IfModule mod_tls.c>
-TLSEngine on
-TLSLog /var/log/proftpd-tls.log
-TLSProtocol TLSv1.2 TLSv1.3
-#TLSTimeoutHandshake 120
-# Really important for WinClients and some clients
-TLSOptions NoSessionReuseRequired
-TLSRSACertificateFile /etc/ssl/certs/proftpd.crt
-TLSRSACertificateKeyFile /etc/ssl/private/proftpd.key
-TLSECCertificateFile /etc/ssl/certs/proftpd_ec.crt
-TLSECCertificateKeyFile /etc/ssl/private/proftpd_ec.key
-
-# Authenticate client that want to use FTP over TLS?
-TLSVerifyClient off
-# Uncomment the following line to force tls login
-TLSRequired on
-</IfModule>
+# Be warned: use of this directive impacts CPU average load!
+# Uncomment this if you like to see progress and transfer rate with ftpwho
+# in downloads. That is not needed for uploads rates.
+#
+# UseSendFile			off
 
 # LOG settings
 # Logging Formats
@@ -2808,35 +2802,233 @@ ExtendedLog /var/log/proftpd-access.log WRITE,READ write
 # everything (be careful, generates_ very_ big logfiles)
 #ExtendedLog /var/log/proftpd-all.log ALL default
 
+# Logging onto /var/log/lastlog is enabled but set to off by default
+#UseLastlog on
+
 # make proftpd faster / do not perform ident and reverse dns lookup
 UseReverseDNS off
 
-<Class whitelist>
-From 127.0.0.1
-</Class>
-
 MaxLoginAttempts 3
-<IfModule mod_ban.c>
- <IfClass whitelist>
-  BanEngine off
- </IfClass>
- <IfClass !whitelist>
-  BanEngine on
- </IfClass>
-BanLog /var/log/proftpd-ban.log
-BanTable /etc/proftpd/ban.tab
-BanMessage "User %u was banned."
-BanOnEvent ClientConnectRate 5/00:00:02 12:00:00 "Stop connecting frequently"
-BanOnEvent MaxLoginAttempts 3/00:30:00 12:00:00
-BanOnEvent AnonRejectPasswords 1/01:00:00 99:99:99
-BanControlsACLs all allow user root
+
+# In order to keep log file dates consistent after chroot, use timezone info
+# from /etc/localtime.  If this is not set, and proftpd is configured to
+# chroot (e.g. DefaultRoot or <Anonymous>), it will use the non-daylight
+# savings timezone regardless of whether DST is in effect.
+#SetEnv TZ :/etc/localtime
+
+# A basic anonymous configuration, no upload directories.
+
+# <Anonymous ~ftp>
+#   User				ftp
+#   Group				nogroup
+#   # We want clients to be able to login with "anonymous" as well as "ftp"
+#   UserAlias			anonymous ftp
+#   # Cosmetic changes, all files belongs to ftp user
+#   DirFakeUser	on ftp
+#   DirFakeGroup on ftp
+#
+#   RequireValidShell		off
+#
+#   # Limit the maximum number of anonymous logins
+#   MaxClients			10
+#
+#   # We want 'welcome.msg' displayed at login, and '.message' displayed
+#   # in each newly chdired directory.
+#   DisplayLogin			welcome.msg
+#   DisplayChdir		.message
+#
+#   # Limit WRITE everywhere in the anonymous chroot
+#   <Directory *>
+#     <Limit WRITE>
+#       DenyAll
+#     </Limit>
+#   </Directory>
+#
+#   # Uncomment this if you're brave.
+#   # <Directory incoming>
+#   #   # Umask 022 is a good standard umask to prevent new files and dirs
+#   #   # (second parm) from being group and world writable.
+#   #   Umask				022  022
+#   #            <Limit READ WRITE>
+#   #            DenyAll
+#   #            </Limit>
+#   #            <Limit STOR>
+#   #            AllowAll
+#   #            </Limit>
+#   # </Directory>
+#
+# </Anonymous>
+
+# DSO
+<IfModule mod_dso.c>
+  # This is the directory where DSO modules reside
+  ModulePath /usr/lib/proftpd
+
+  # Allow only user root to load and unload modules, but allow everyone
+  # to see which modules have been loaded
+  ModuleControlsACLs insmod,rmmod allow user root
+  ModuleControlsACLs lsmod allow user *
+
+  LoadModule mod_tls.c
+  # Install one of proftpd-mod-mysql, proftpd-mod-pgsql or any other
+  # SQL backend engine to use this module and the required backend.
+  # This module must be mandatory loaded before anyone of
+  # the existent SQL backeds.
+  LoadModule mod_sql.c
+
+  # Install proftpd-mod-mysql and decomment the previous
+  # mod_sql.c module to use this.
+  LoadModule mod_sql_mysql.c
+
+  LoadModule mod_ban.c
 </IfModule>
 
+<IfModule mod_quotatab.c>
+  QuotaEngine on
+</IfModule>
+
+<IfModule mod_ratio.c>
+  Ratios off
+</IfModule>
+
+<IfModule mod_ctrls.c>
+  ControlsEngine        off
+  ControlsMaxClients    2
+  ControlsLog           /var/log/proftpd-controls.log
+  ControlsInterval      5
+  ControlsSocket        /var/run/proftpd/proftpd.sock
+</IfModule>
+
+<IfModule mod_ctrls_admin.c>
+  AdminControlsEngine off
+</IfModule>
+
+<IfModule mod_auth_pam.c>
+  AuthPAM off
+</IfModule>
+
+#
+# Proftpd sample configuration for SQL-based authentication.
+#
+# (This is not to be used if you prefer a PAM-based SQL authentication)
+#
+
+<IfModule mod_sql.c>
+  RequireValidShell off
+  AuthOrder mod_sql.c
+
+  #
+  # Choose a SQL backend among MySQL or PostgreSQL.
+  # Both modules are loaded in default configuration, so you have to specify the backend
+  # or comment out the unused module in /etc/proftpd/modules.conf.
+  # Use 'mysql' or 'postgres' as possible values.
+  #
+  SQLBackend	mysql
+  #
+  SQLEngine on
+  SQLAuthenticate on
+  #
+  # Use both an encrypted or plaintext password
+  SQLAuthTypes Crypt OpenSSL
+
+  SQLAuthenticate users* groups*
+
+  #
+  # Connection
+  SQLConnectInfo <SQL_DB>@<SQL_HOST> <SQL_UNPRIVILEGED_USER> <SQL_UNPRIVILEGED_PASSWORD>
+  #
+  # Describes both users/groups tables
+  #
+  SQLUserInfo ftp_users username password uid gid homedir shell
+  SQLGroupInfo ftp_groups groupname gid members
+  #
+  SQLUserWhereClause "login_enabled = 'y'"
+
+  SQLLog PASS login
+  SQLNamedQuery login UPDATE "last_login=now(), login_count=login_count+1 WHERE username='%u'" ftp_users
+
+  SQLLog RETR download
+  SQLNamedQuery download UPDATE "down_count=down_count+1, down_bytes=down_bytes+%b WHERE username='%u'" ftp_users
+
+  SQLLog STOR upload
+  SQLNamedQuery upload UPDATE "up_count=up_count+1, up_bytes=up_bytes+%b WHERE username='%u'" ftp_users
+
+  <IfModule mod_quotatab.c>
+    QuotaEngine on
+    QuotaShowQuotas on
+    QuotaDisplayUnits Mb
+    QuotaLock /var/lock/ftpd.quotatab.lock
+    QuotaLimitTable sql:/get-quota-limit
+    QuotaTallyTable sql:/get-quota-tally/update-quota-tally/insert-quota-tally
+    SQLNamedQuery get-quota-limit SELECT "ftp_users.username AS name, ftp_quotalimits.quota_type, ftp_quotalimits.per_session, ftp_quotalimits.limit_type, panel_customers.diskspace*1024 AS bytes_in_avail, ftp_quotalimits.bytes_out_avail, ftp_quotalimits.bytes_xfer_avail, ftp_quotalimits.files_in_avail, ftp_quotalimits.files_out_avail, ftp_quotalimits.files_xfer_avail FROM ftp_users, ftp_quotalimits, panel_customers WHERE ftp_users.username = '%{0}' AND panel_customers.loginname = SUBSTRING_INDEX('%{0}', 'ftp', 1) AND quota_type ='%{1}'"
+    SQLNamedQuery get-quota-tally SELECT "name, quota_type, bytes_in_used,bytes_out_used, bytes_xfer_used, files_in_used, files_out_used,files_xfer_used FROM ftp_quotatallies WHERE name = '%{0}' AND quota_type = '%{1}'"
+    SQLNamedQuery update-quota-tally UPDATE "bytes_in_used = bytes_in_used + %{0}, bytes_out_used = bytes_out_used + %{1}, bytes_xfer_used = bytes_xfer_used + %{2}, files_in_used = files_in_used + %{3}, files_out_used= files_out_used + %{4}, files_xfer_used = files_xfer_used + %{5} WHERE name= '%{6}' AND quota_type = '%{7}'" ftp_quotatallies
+    SQLNamedQuery insert-quota-tally INSERT "%{0}, %{1}, %{2}, %{3}, %{4},%{5}, %{6}, %{7}" ftp_quotatallies
+  </IfModule>
+</IfModule>
+
+<IfModule mod_tls.c>
+  TLSEngine                               on
+  TLSLog                                  /var/log/proftpd-tls.log
+  TLSProtocol                             TLSv1.2 TLSv1.3
+  TLSRSACertificateFile                   /etc/ssl/certs/proftpd.crt
+  TLSRSACertificateKeyFile                /etc/ssl/private/proftpd.key
+  TLSECCertificateFile                    /etc/ssl/certs/proftpd_ec.crt
+  TLSECCertificateKeyFile                 /etc/ssl/private/proftpd_ec.key
+  TLSOptions                              NoSessionReuseRequired
+  TLSVerifyClient                         off
+
+  # Are clients required to use FTP over TLS when talking to this server?
+  TLSRequired                             on
+
+  # Allow SSL/TLS renegotiations when the client requests them, but
+  # do not force the renegotiations.  Some clients do not support
+  # SSL/TLS renegotiations; when mod_tls forces a renegotiation, these
+  # clients will close the data connection, or there will be a timeout
+  # on an idle data connection.
+  #
+  #TLSRenegotiate                          required off
+</IfModule>
+
+<Class whitelist>
+  From 127.0.0.1
+</Class>
+
 <IfModule mod_ban.c>
+  <IfModule mod_ifsession.c>
+    <IfClass whitelist>
+      BanEngine off
+    </IfClass>
+    <IfClass !whitelist>
+      BanEngine on
+    </IfClass>
+  </IfModule>
+  <IfModule !mod_ifsession.c>
+    BanEngine on
+  </IfModule>
+  BanLog /var/log/proftpd-ban.log
+  BanTable /etc/proftpd/ban.tab
+  BanMessage "User %u was banned."
+  BanOnEvent ClientConnectRate 5/00:00:02 12:00:00 "Stop connecting frequently"
+  BanOnEvent MaxLoginAttempts 3/00:30:00 12:00:00
+  BanOnEvent AnonRejectPasswords 1/01:00:00 99:99:99
+  BanControlsACLs all allow user root
+</IfModule>
+
+# Delay engine reduces impact of the so-called Timing Attack described in
+# http://www.securityfocus.com/bid/11430/discuss
+<IfModule mod_delay.c>
+  <IfModule mod_ifsession.c>
 	<IfClass whitelist>
-		BanEngine off
-		DelayEngine off
+		DelayEngine  off
 	</IfClass>
+	<IfClass !whitelist>
+		DelayEngine  on
+	</IfClass>
+  </IfModule>
+  <IfModule !mod_ifsession.c>
+    DelayEngine  on
+  </IfModule>
 </IfModule>
 ]]>
 						</content>
