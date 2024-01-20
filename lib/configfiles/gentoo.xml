@@ -3195,7 +3195,7 @@ account     required    pam_mysql.so user=<SQL_UNPRIVILEGED_USER> passwd=<SQL_UN
 					title="Awstats  (traffic analyzer)">
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-misc/awstats]]></install>
 					<command><![CDATA[sed -i.bak 's/^DirData/# DirData/' {{settings.system.awstats_conf}}/awstats.model.conf]]></command>
-					<command><![CDATA[sed -i.bak 's|^\\(DirIcons=\\).*$|\\1\\"/awstats-icon\\"|' {{settings.system.awstats_conf}}/awstats.model.conf]]></command>
+					<command><![CDATA[sed -i.bak 's|^\(DirIcons=\).*$|\1\"/awstats-icon\"|' {{settings.system.awstats_conf}}/awstats.model.conf]]></command>
 				</daemon>
 				<!-- Logrotate -->
 				<daemon name="logrotate" title="Logrotate">
