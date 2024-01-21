@@ -3639,19 +3639,15 @@ aliases:     files
 						<command><![CDATA[echo "www-servers/apache suexec" >> /etc/portage/package.use/froxlor]]></command>
 					</commands>
 					<install>
-						<visibility mode="true">{{settings.system.mod_fcgid}}
-						</visibility>
-						<command><![CDATA[echo "www-servers/apache apache2_modules_proxy_fcgi" >> /etc/portage/package.use/froxlor]]></command>
-					</install>
-					<install>
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache]]></content>
+						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-apache/mod_fcgid www-servers/apache]]></content>
 					</install>
 					<commands index="2">
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<command><![CDATA[# add "-D SUEXEC -D FCGID" to /etc/conf.d/apache2]]></command>
+						<command><![CDATA[# enable fcgid according to https://wiki.gentoo.org/wiki/Apache#Enabling_PHP_through_fcgid]]></command>
+						<command><![CDATA[# add "DirectoryIndex index.php" to /etc/apache2/modules.d/20_mod_fcgid.conf]]></command>
 					</commands>
 					<commands index="3">
 						<visibility mode="true">{{settings.system.mod_fcgid_ownvhost}}
@@ -3661,11 +3657,6 @@ aliases:     files
 						<command><![CDATA[mkdir -p {{settings.system.mod_fcgid_configdir}}]]></command>
 						<command><![CDATA[mkdir -p {{settings.system.mod_fcgid_tmpdir}}]]></command>
 						<command><![CDATA[chmod 1777 {{settings.system.mod_fcgid_tmpdir}}]]></command>
-						<command>
-							<visibility mode="equals" value="apache2">{{settings.system.webserver}}
-							</visibility>
-							<content><![CDATA[# remove "-D PHP5" from /etc/conf.d/apache2]]></content>
-						</command>
 					</commands>
 					<!-- instead of just restarting apache, we let the cronjob do all the
 						dirty work -->
@@ -3686,15 +3677,10 @@ aliases:     files
 						</visibility>
 						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache]]></content>
 					</install>
-					<install>
-						<visibility mode="true">{{settings.phpfpm.enabled}}
-						</visibility>
-						<content><![CDATA[echo "www-servers/apache apache2_modules_proxy_fcgi" >> /etc/portage/package.use/froxlor]]></content>
-					</install>
 					<commands index="2">
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<command><![CDATA[# add "-D FASTCGI -D SUEXEC" to /etc/conf.d/apache2]]></command>
+						<command><![CDATA[# enable FPM according to https://wiki.gentoo.org/wiki/Apache#Enabling_PHP-FPM_through_mod_proxy_fcgi_in_Apache_2.4]]></command>
 					</commands>
 					<commands index="3">
 						<visibility mode="true">{{settings.phpfpm.enabled_ownvhost}}
@@ -3703,13 +3689,6 @@ aliases:     files
 						</visibility>
 						<command><![CDATA[groupadd -f {{settings.phpfpm.vhost_httpgroup}}]]></command>
 						<command><![CDATA[useradd -s /bin/false -g {{settings.phpfpm.vhost_httpgroup}} {{settings.phpfpm.vhost_httpuser}}]]></command>
-					</commands>
-					<commands index="4">
-						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
-						</visibility>
-						<visibility mode="true">{{settings.phpfpm.enabled_ownvhost}}
-						</visibility>
-						<command><![CDATA[# remove "-D PHP5" from /etc/conf.d/apache2]]></command>
 					</commands>
 					<!-- instead of just restarting apache, we let the cronjob do all the
 						dirty work -->
