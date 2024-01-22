@@ -34,28 +34,10 @@
 				<!-- general HTTP commands -->
 				<general>
 					<commands index="1">
-						<command>
-							<visibility mode="isdir">{{settings.system.apacheconf_vhost}}
-							</visibility>
-							<content><![CDATA[mkdir -p {{settings.system.apacheconf_vhost}}]]></content>
-						</command>
-						<command>
-							<visibility mode="isfile">{{settings.system.apacheconf_vhost}}
-							</visibility>
-							<content><![CDATA[touch {{settings.system.apacheconf_vhost}}]]></content>
-						</command>
+						<command><![CDATA[mkdir -p {{settings.system.apacheconf_vhost}}]]></command>
 						<command><![CDATA[chown root:0 {{settings.system.apacheconf_vhost}}]]></command>
 						<command><![CDATA[chmod 0600 {{settings.system.apacheconf_vhost}}]]></command>
-						<command>
-							<visibility mode="isdir">{{settings.system.apacheconf_diroptions}}
-							</visibility>
-							<content><![CDATA[mkdir -p {{settings.system.apacheconf_diroptions}}]]></content>
-						</command>
-						<command>
-							<visibility mode="isfile">{{settings.system.apacheconf_diroptions}}
-							</visibility>
-							<content><![CDATA[touch {{settings.system.apacheconf_diroptions}}]]></content>
-						</command>
+						<command><![CDATA[mkdir -p {{settings.system.apacheconf_diroptions}}]]></command>
 						<command><![CDATA[chown root:0 {{settings.system.apacheconf_diroptions}}]]></command>
 						<command><![CDATA[chmod 0600 {{settings.system.apacheconf_diroptions}}]]></command>
 						<command><![CDATA[mkdir -p {{settings.system.documentroot_prefix}}]]></command>
@@ -197,63 +179,43 @@ alias.url           += ("/.well-known/acme-challenge/" => "{{settings.system.let
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/nginx]]></install>
 					<file name="/etc/nginx/nginx.conf" backup="true">
 						<content><![CDATA[
-user nginx;
-worker_processes  4;
+user nginx nginx;
+worker_processes auto;
 
-pid /var/run/nginx.pid;
+error_log /var/log/nginx/error.log info;
 
 events {
-    worker_connections  1024;
+	worker_connections 1024;
+	use epoll;
 }
 
 http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
+	include /etc/nginx/mime.types;
+	types_hash_max_size 4096;
+	default_type application/octet-stream;
 
-    access_log  /var/log/nginx/access.log;
+	connection_pool_size 256;
+	client_header_buffer_size 1k;
+	large_client_header_buffers 4 2k;
+	request_pool_size 4k;
 
-    sendfile        on;
-    tcp_nodelay     on;
+	gzip off;
 
-    keepalive_timeout  65;
+	output_buffers 1 32k;
+	postpone_output 1460;
 
-    gzip  on;
+	sendfile on;
+	tcp_nopush on;
+	tcp_nodelay on;
 
-    include /etc/nginx/conf.d/*.conf;
-    include /etc/nginx/sites-enabled/*;
+	keepalive_timeout 60 20;
+
+	ignore_invalid_headers on;
+
+	access_log /var/log/nginx/access.log;
+
+    include /etc/nginx/sites-enabled/*.conf;
 }
-]]>
-						</content>
-					</file>
-					<file name="/etc/nginx/fastcgi_params" backup="true">
-						<content><![CDATA[
-fastcgi_connect_timeout 65;
-fastcgi_send_timeout    180;
-fastcgi_read_timeout    180;
-
-fastcgi_param  QUERY_STRING       $query_string;
-fastcgi_param  REQUEST_METHOD     $request_method;
-fastcgi_param  CONTENT_TYPE       $content_type;
-fastcgi_param  CONTENT_LENGTH     $content_length;
-
-fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
-fastcgi_param  REQUEST_URI        $request_uri;
-fastcgi_param  DOCUMENT_URI       $document_uri;
-fastcgi_param  DOCUMENT_ROOT      $document_root;
-fastcgi_param  SERVER_PROTOCOL    $server_protocol;
-fastcgi_param  HTTPS              $https if_not_empty;
-
-fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
-fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
-
-fastcgi_param  REMOTE_ADDR        $remote_addr;
-fastcgi_param  REMOTE_PORT        $remote_port;
-fastcgi_param  SERVER_ADDR        $server_addr;
-fastcgi_param  SERVER_PORT        $server_port;
-fastcgi_param  SERVER_NAME        $server_name;
-
-# PHP only, required if PHP was built with --enable-force-cgi-redirect
-fastcgi_param  REDIRECT_STATUS    200;
 ]]>
 						</content>
 					</file>
@@ -271,71 +233,6 @@ location /.well-known/acme-challenge {
 ]]>
 						</content>
 					</file>
-					<file name="/etc/init.d/php-fcgi" backup="true" chmod="u+x">
-						<visibility mode="false">{{settings.phpfpm.enabled}}
-						</visibility>
-						<visibility mode="false">{{settings.system.mod_fcgid}}
-						</visibility>
-						<content><![CDATA[
-#!/bin/bash
-BIND="127.0.0.1:8888"
-USER="nginx"
-PHP_FCGI_CHILDREN="15"
-PHP_FCGI_MAX_REQUESTS="1000"
-
-PHP_CGI="/usr/bin/php-cgi"
-PHP_CGI_NAME="$(basename ${PHP_CGI})"
-PHP_CGI_ARGS="- USER=${USER} PATH=/usr/bin PHP_FCGI_CHILDREN=${PHP_FCGI_CHILDREN} PHP_FCGI_MAX_REQUESTS=${PHP_FCGI_MAX_REQUESTS} ${PHP_CGI} -b ${BIND}"
-RETVAL="0"
-
-start() {
-      echo -n "Starting PHP FastCGI: "
-      start-stop-daemon --quiet --start --background --chuid "$USER" --exec /usr/bin/env -- $PHP_CGI_ARGS
-      RETVAL="$?"
-      echo "${PHP_CGI_NAME}."
-}
-stop() {
-      echo -n "Stopping PHP FastCGI: "
-      killall -q -w -u ${USER} ${PHP_CGI}
-      RETVAL="$?"
-      echo "${PHP_CGI_NAME}."
-}
-
-case "$1" in
-    start)
-      start
-  ;;
-    stop)
-      stop
-  ;;
-    restart)
-      stop
-      start
-  ;;
-    *)
-      echo "Usage: php-fastcgi {start|stop|restart}"
-      exit 1
-  ;;
-esac
-exit "$RETVAL"
-]]>
-						</content>
-					</file>
-					<include>//service[@type='http']/general/commands</include>
-					<command>
-						<visibility mode="false">{{settings.phpfpm.enabled}}
-						</visibility>
-						<visibility mode="false">{{settings.system.mod_fcgid}}
-						</visibility>
-						<content><![CDATA[rc-update add php-fcgi default]]></content>
-					</command>
-					<command>
-						<visibility mode="false">{{settings.phpfpm.enabled}}
-						</visibility>
-						<visibility mode="false">{{settings.system.mod_fcgid}}
-						</visibility>
-						<content><![CDATA[/etc/init.d/php-fcgi restart]]></content>
-					</command>
 					<command><![CDATA[rc-update add nginx default]]></command>
 					<command><![CDATA[{{settings.system.apachereload_command}}]]></command>
 				</daemon>
