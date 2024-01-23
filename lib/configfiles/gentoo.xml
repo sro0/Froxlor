@@ -1561,7 +1561,7 @@ bind-check-interval=180
 						</command>
 					</commands>
 					<installs index="1">
-						<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose mail-mta/postfix]]></install>
+						<install><![CDATA[USE="dovecot-sasl mysql" emerge --noreplace --newuse --oneshot --jobs --verbose mail-mta/postfix]]></install>
 					</installs>
 					<commands index="2">
 						<command><![CDATA[mkdir -p {{settings.system.vmail_homedir}}]]></command>
@@ -1671,7 +1671,6 @@ root:               <ADMIN_MAIL>
 					title="Postfix 3 with dovecot" default="true">
 					<include>//service[@type='smtp']/general/commands[@index=1]
 					</include>
-					<command><![CDATA[echo "mail-mta/postfix dovecot-sasl mysql" >> /etc/portage/package.use/froxlor]]></command>
 					<include>//service[@type='smtp']/general/installs[@index=1]
 					</include>
 					<include>//service[@type='smtp']/general/commands[@index=2]
@@ -2688,8 +2687,7 @@ plugin {
 				</general>
 				<daemon name="dovecot_postfix" version="2" title="Dovecot"
 					default="true">
-					<command><![CDATA[echo "net-mail/dovecot argon2 mysql" >> /etc/portage/package.use/froxlor]]></command>
-					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose net-mail/dovecot]]></install>
+					<install><![CDATA[USE="argon2 mysql" emerge --noreplace --newuse --oneshot --jobs --verbose net-mail/dovecot]]></install>
 					<include>//service[@type='mail']/general/files[@index=1]
 					</include>
 					<command><![CDATA[if [ ! -f /etc/dovecot/dh.pem ]; then openssl dhparam -out /etc/dovecot/dh.pem 3072; fi]]></command>
@@ -2796,8 +2794,7 @@ action = "no action";
 			<service type="ftp" title="{{lng.admin.configfiles.ftp}}">
 				<!-- Proftpd -->
 				<daemon name="proftpd" title="ProFTPd" default="true">
-					<command><![CDATA[echo "net-ftp/proftpd mysql" >> /etc/portage/package.use/froxlor]]></command>
-					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose net-ftp/proftpd]]></install>
+					<install><![CDATA[USE="mysql" emerge --noreplace --newuse --oneshot --jobs --verbose net-ftp/proftpd]]></install>
 					<file name="/etc/proftpd/create-cert.sh" chown="root:0"
 						chmod="0700">
 						<content><![CDATA[#!/bin/bash
@@ -3151,8 +3148,7 @@ MaxLoginAttempts 3
 				</daemon>
 				<!-- Pureftpd -->
 				<daemon name="pureftpd" title="PureFTPd">
-					<command><![CDATA[echo "net-ftp/pure-ftpd mysql" >> /etc/portage/package.use/froxlor]]></command>
-					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose net-ftp/pure-ftpd]]></install>
+					<install><![CDATA[USE="mysql" emerge --noreplace --newuse --oneshot --jobs --verbose net-ftp/pure-ftpd]]></install>
 					<file name="/tmp/froxlor-pureftpd-create-cert.sh" chown="root:0"
 						chmod="0700">
 						<content><![CDATA[#!/bin/bash
@@ -3744,17 +3740,11 @@ aliases:     files
 				</daemon>
 				<!-- FCGID -->
 				<daemon name="fcgid" title="FCGID">
-					<command><![CDATA[echo "dev-lang/php cgi" >> /etc/portage/package.use/froxlor]]></command>
-					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose dev-lang/php]]></install>
-					<commands index="1">
-						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
-						</visibility>
-						<command><![CDATA[echo "www-servers/apache suexec" >> /etc/portage/package.use/froxlor]]></command>
-					</commands>
+					<install><![CDATA[USE="cgi" emerge --noreplace --newuse --oneshot --jobs --verbose dev-lang/php]]></install>
 					<install>
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-apache/mod_fcgid www-servers/apache]]></content>
+						<content><![CDATA[USE="suexec" emerge --noreplace --newuse --oneshot --jobs --verbose www-apache/mod_fcgid www-servers/apache]]></content>
 					</install>
 					<commands index="2">
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
@@ -3778,17 +3768,11 @@ aliases:     files
 				<!-- PHP-FPM -->
 				<daemon name="php-fpm"
 					title="PHP-FPM">
-					<command><![CDATA[echo "dev-lang/php fpm" >> /etc/portage/package.use/froxlor]]></command>
-					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose dev-lang/php]]></install>
-					<commands index="1">
-						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
-						</visibility>
-						<command><![CDATA[echo "www-servers/apache suexec apache2_modules_proxy apache2_modules_proxy_fcgi" >> /etc/portage/package.use/froxlor]]></command>
-					</commands>
+					<install><![CDATA[USE="fpm" emerge --noreplace --newuse --oneshot --jobs --verbose dev-lang/php]]></install>
 					<install>
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
 						</visibility>
-						<content><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache]]></content>
+						<content><![CDATA[USE="suexec apache2_modules_proxy apache2_modules_proxy_fcgi" emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache]]></content>
 					</install>
 					<commands index="2">
 						<visibility mode="equals" value="apache2">{{settings.system.webserver}}
