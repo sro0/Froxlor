@@ -12,7 +12,7 @@
 			<default for="apache24" settinggroup="system" varname="apacheconf_htpasswddir" value="/etc/apache2/froxlor-htpasswd/"></default>
 			<default for="apache24" settinggroup="system" varname="apachereload_command" value="/etc/init.d/apache2 reload"></default>
 			<!-- TODO how does this work on gentoo? -->
-			<default for="apache24" settinggroup="system" varname="letsencryptacmeconf" value="/etc/apache2/acme.conf"></default>
+			<default for="apache24" settinggroup="system" varname="letsencryptacmeconf" value="/etc/apache2/vhosts.d/acme.conf"></default>
 			<default for="lighttpd" settinggroup="system" varname="apacheconf_vhost" value="/etc/lighttpd/vhosts.d/"></default>
 			<default for="lighttpd" settinggroup="system" varname="apacheconf_diroptions" value="/etc/lighttpd/diropts.d/"></default>
 			<default for="lighttpd" settinggroup="system" varname="apacheconf_htpasswddir" value="/etc/lighttpd/froxlor-htpasswd/"></default>
