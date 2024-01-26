@@ -85,6 +85,7 @@ Alias "/.well-known/acme-challenge" "{{settings.system.letsencryptchallengepath}
 				<!-- HTTP Lighttpd -->
 				<daemon name="lighttpd" title="LigHTTPd (deprecated)">
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/lighttpd]]></install>
+					<include>//service[@type='http']/general/commands</include>
 					<file name="/etc/lighttpd/lighttpd.conf">
 						<content><![CDATA[
 ###############################################################################
@@ -177,6 +178,7 @@ alias.url           += ("/.well-known/acme-challenge/" => "{{settings.system.let
 				<!-- HTTP Nginx -->
 				<daemon name="nginx" title="nginx">
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/nginx]]></install>
+					<include>//service[@type='http']/general/commands</include>
 					<file name="/etc/nginx/nginx.conf" backup="true">
 						<content><![CDATA[
 user nginx nginx;
