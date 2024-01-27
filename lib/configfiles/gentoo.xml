@@ -53,21 +53,6 @@
 				<daemon name="apache" version="2.4" title="Apache 2.4">
 					<install><![CDATA[emerge --noreplace --newuse --oneshot --jobs --verbose www-servers/apache]]></install>
 					<include>//service[@type='http']/general/commands</include>
-					<file name="/etc/apache2/modules.d/70_fastcgi.conf">
-						<visibility mode="true">{{settings.phpfpm.enabled}}
-						</visibility>
-						<content><![CDATA[
-<IfModule mod_fastcgi.c>
-    FastCgiIpcDir <FPM_IPCDIR>
-
-    <Location "/fastcgiphp">
-		Require all granted
-        Require env REDIRECT_STATUS
-    </Location>
-</IfModule>
-]]>
-						</content>
-					</file>
 					<file name="{{settings.system.letsencryptacmeconf}}">
 						<visibility mode="true">{{settings.system.leenabled}}
 						</visibility>
