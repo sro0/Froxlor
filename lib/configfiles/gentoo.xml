@@ -26,6 +26,7 @@
 			<default for="nginx" settinggroup="phpfpm" varname="fastcgi_ipcdir" value="/var/run/nginx/"></default>
 			<default settinggroup="system" varname="bindreload_command" value="/etc/init.d/named restart"></default>
 			<default settinggroup="system" varname="crondreload" value="/etc/init.d/cronie restart"></default>
+			<default settinggroup="system" varname="traffictool" value="goaccess"></default>
 			<default settinggroup="antispam" varname="reload_command" value="/etc/init.d/rspamd restart"></default>
 		</defaults>
 		<services>
