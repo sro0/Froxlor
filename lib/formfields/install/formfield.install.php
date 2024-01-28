@@ -206,7 +206,7 @@ return [
 						'type' => 'select',
 						'mandatory' => true,
 						'select_var' => $webserverBackend,
-						'selected' => old('webserver_backend', 'php-fpm', 'installation'),
+						'selected' => old('webserver_backend', $guessedBackend, 'installation'),
 					],
 					'httpuser' => [
 						'label' => lng('admin.webserver_user'),

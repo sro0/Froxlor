@@ -74,11 +74,12 @@ class Install
 			asort($this->supportedOS);
 		}
 
-		// guess distribution and webserver to preselect in formfield
+		// guess distribution, webserver and backend to preselect in formfield
 		$webserverBackend = $this->webserverBackend;
 		$supportedOS = $this->supportedOS;
 		$guessedDistribution = $this->guessDistribution();
 		$guessedWebserver = $this->guessWebserver();
+		$guessedBackend = $this->guessBackend();
 
 		// set formfield, so we can get the fields and steps etc.
 		$this->formfield = require dirname(__DIR__, 3) . '/lib/formfields/install/formfield.install.php';
@@ -424,5 +425,19 @@ class Install
 			return strtolower($os_dist['VERSION_CODENAME'] ?? ($os_dist['ID'] ?? $default));
 		}
 		return $default;
+	}
+
+	private function guessBackend(): ?string
+	{
+		switch(@php_sapi_name()) {
+			case 'fpm-fcgi':
+				return 'php-fpm';
+			case 'cgi-fcgi':
+				return 'fcgid';
+			case 'apache2handler':
+				return 'mod_php';
+			default:
+				return null;
+		}
 	}
 }
