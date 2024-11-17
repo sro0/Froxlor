@@ -54,7 +54,7 @@ if ($action == '2fa_entercode') {
 		Response::redirectTo('index.php');
 		exit();
 	}
-	$smessage = isset($_GET['showmessage']) ? (int)$_GET['showmessage'] : 0;
+	$smessage = (int)Request::get('showmessage', 0);
 	$message = "";
 	if ($smessage > 0) {
 		$message = lng('error.2fa_wrongcode');
@@ -62,6 +62,7 @@ if ($action == '2fa_entercode') {
 	// show template to enter code
 	UI::view('login/enter2fa.html.twig', [
 		'pagetitle' => lng('login.2fa'),
+		'remember_me' => (Settings::Get('panel.db_version') >= 202407200) ? true : false,
 		'message' => $message
 	]);
 } elseif ($action == '2fa_verify') {
@@ -71,7 +72,8 @@ if ($action == '2fa_entercode') {
 		Response::redirectTo('index.php');
 		exit();
 	}
-	$code = isset($_POST['2fa_code']) ? $_POST['2fa_code'] : null;
+	$code = Request::post('2fa_code');
+	$remember = Request::post('2fa_remember');
 	// verify entered code
 	$tfa = new FroxlorTwoFactorAuth('Froxlor ' . Settings::Get('system.hostname'));
 	// get user-data
@@ -83,7 +85,8 @@ if ($action == '2fa_entercode') {
 		// verify code set to user's data_2fa field
 		$sel_stmt = Database::prepare("SELECT `data_2fa` FROM " . $table . " WHERE `" . $field . "` = :uid");
 		$userinfo_code = Database::pexecute_first($sel_stmt, ['uid' => $uid]);
-		$result = $tfa->verifyCode($userinfo_code['data_2fa'], $code);
+		// 60sec discrepancy (possible slow email delivery)
+		$result = $tfa->verifyCode($userinfo_code['data_2fa'], $code, 60);
 	} else {
 		$result = $tfa->verifyCode($_SESSION['secret_2fa'], $code, 3);
 	}
@@ -105,18 +108,47 @@ if ($action == '2fa_entercode') {
 		$userinfo['adminsession'] = $isadmin;
 		$userinfo['userid'] = $uid;
 
+		// when using email-2fa, remove the one-time-code
+		if ($userinfo['type_2fa'] == '1') {
+			$del_stmt = Database::prepare("UPDATE " . $table . " SET `data_2fa` = '' WHERE `" . $field . "` = :uid");
+			Database::pexecute_first($del_stmt, [
+				'uid' => $uid
+			]);
+		}
+
+		// when remember is activated, set the cookie
+		if ($remember) {
+			$selector = base64_encode(Froxlor::genSessionId(9));
+			$authenticator = Froxlor::genSessionId(33);
+			$valid_until = time()+60*60*24*30;
+			$ins_stmt = Database::prepare("
+				INSERT INTO `".TABLE_PANEL_2FA_TOKENS."` SET
+				`selector` = :selector,
+				`token` = :authenticator,
+				`userid` = :userid,
+				`valid_until` = :valid_until
+			");
+			Database::pexecute($ins_stmt, [
+				'selector' => $selector,
+				'authenticator' => hash('sha256', $authenticator),
+				'userid' => $uid,
+				'valid_until' => $valid_until
+			]);
+			$cookie_params = [
+				'expires' => $valid_until, // 30 days
+				'path' => '/',
+				'domain' => UI::getCookieHost(),
+				'secure' => UI::requestIsHttps(),
+				'httponly' => true,
+				'samesite' => 'Strict'
+			];
+			setcookie('frx_2fa_remember', $selector.':'.base64_encode($authenticator), $cookie_params);
+		}
+
 		// if not successful somehow - start again
 		if (!finishLogin($userinfo)) {
 			Response::redirectTo('index.php', [
 				'showmessage' => '2'
-			]);
-		}
-
-		// when using email-2fa, remove the one-time-code
-		if ($userinfo['type_2fa'] == '1') {
-			$del_stmt = Database::prepare("UPDATE " . $table . " SET `data_2fa` = '' WHERE `" . $field . "` = :uid");
-			$userinfo = Database::pexecute_first($del_stmt, [
-				'uid' => $uid
 			]);
 		}
 		exit();
@@ -162,8 +194,8 @@ if ($action == '2fa_entercode') {
 	exit();
 } elseif ($action == 'login') {
 	if (!empty($_POST)) {
-		$loginname = Validate::validate($_POST['loginname'], 'loginname');
-		$password = Validate::validate($_POST['password'], 'password');
+		$loginname = Validate::validate(Request::post('loginname'), 'loginname');
+		$password = Validate::validate(Request::post('password'), 'password');
 
 		$select_additional = '';
 		if (Settings::Get('panel.db_version') >= 202312230) {
@@ -181,6 +213,7 @@ if ($action == '2fa_entercode') {
 		$row = $stmt->fetch(PDO::FETCH_ASSOC);
 
 		$is_admin = false;
+		$table = "";
 		if ($row && $row['customer'] == $loginname) {
 			$table = "`" . TABLE_PANEL_CUSTOMERS . "`";
 			$uid = 'customerid';
@@ -220,9 +253,12 @@ if ($action == '2fa_entercode') {
 						}
 					}
 				}
-			} else {
-				$is_admin = true;
 			}
+		}
+
+		if (empty($table)) {
+			// try login as admin of no customer-login method worked
+			$is_admin = true;
 		}
 
 		if ((Froxlor::hasUpdates() || Froxlor::hasDbUpdates()) && $is_admin == false) {
@@ -272,7 +308,7 @@ if ($action == '2fa_entercode') {
 				$rstlog = FroxlorLogger::getInstanceOf([
 					'loginname' => $_SERVER['REMOTE_ADDR']
 				]);
-				$rstlog->logAction(FroxlorLogger::LOGIN_ACTION, LOG_WARNING, "Unknown user '" . $loginname . "' tried to login.");
+				$rstlog->logAction(FroxlorLogger::LOGIN_ACTION, LOG_WARNING, "Unknown user tried to login.");
 
 				Response::redirectTo('index.php', [
 					'showmessage' => '2'
@@ -334,7 +370,7 @@ if ($action == '2fa_entercode') {
 			$rstlog = FroxlorLogger::getInstanceOf([
 				'loginname' => $_SERVER['REMOTE_ADDR']
 			]);
-			$rstlog->logAction(FroxlorLogger::LOGIN_ACTION, LOG_WARNING, "User '" . $loginname . "' tried to login with wrong password.");
+			$rstlog->logAction(FroxlorLogger::LOGIN_ACTION, LOG_WARNING, "User tried to login with wrong password.");
 
 			unset($userinfo);
 			Response::redirectTo('index.php', [
@@ -345,6 +381,25 @@ if ($action == '2fa_entercode') {
 
 		// 2FA activated
 		if (Settings::Get('2fa.enabled') == '1' && $userinfo['type_2fa'] > 0) {
+
+			// check for remember cookie
+			if (!empty($_COOKIE['frx_2fa_remember'])) {
+				list($selector, $authenticator) = explode(':', $_COOKIE['frx_2fa_remember']);
+				$sel_stmt = Database::prepare("SELECT `token` FROM `".TABLE_PANEL_2FA_TOKENS."` WHERE `selector` = :selector AND `userid` = :uid AND `valid_until` >= UNIX_TIMESTAMP()");
+				$token_check = Database::pexecute_first($sel_stmt, ['selector' => $selector, 'uid' => $userinfo[$uid]]);
+				if ($token_check && hash_equals($token_check['token'], hash('sha256', base64_decode($authenticator)))) {
+					if (!finishLogin($userinfo)) {
+						Response::redirectTo('index.php', [
+							'showmessage' => '2'
+						]);
+					}
+					exit();
+				}
+				// not found or invalid, this cookie is useless, get rid of it
+				unset($_COOKIE['frx_2fa_remember']);
+				setcookie('frx_2fa_remember', "", time()-3600);
+			}
+
 			// redirect to code-enter-page
 			$_SESSION['secret_2fa'] = ($userinfo['type_2fa'] == 2 ? $userinfo['data_2fa'] : 'email');
 			$_SESSION['uid_2fa'] = $userinfo[$uid];
@@ -412,7 +467,7 @@ if ($action == '2fa_entercode') {
 		}
 		exit();
 	} else {
-		$smessage = isset($_GET['showmessage']) ? (int)$_GET['showmessage'] : 0;
+		$smessage = (int)Request::get('showmessage', 0);
 		$message = '';
 		$successmessage = '';
 
@@ -449,25 +504,20 @@ if ($action == '2fa_entercode') {
 		}
 
 		// Pass the last used page if needed
-		$lastscript = "";
-		if (isset($_REQUEST['script']) && $_REQUEST['script'] != "") {
-			$lastscript = $_REQUEST['script'];
+		$lastscript = Request::any('script', '');
+		if (!empty($lastscript)) {
 			$lastscript = str_replace("..", "", $lastscript);
 			$lastscript = htmlspecialchars($lastscript, ENT_QUOTES);
 
-			if (!file_exists(__DIR__ . "/" . $lastscript)) {
+			if (file_exists(__DIR__ . "/" . $lastscript)) {
+				$_SESSION['lastscript'] = $lastscript;
+			} else {
 				$lastscript = "";
 			}
 		}
-		$lastqrystr = "";
-		if (isset($_REQUEST['qrystr']) && $_REQUEST['qrystr'] != "") {
-			$lastqrystr = urlencode($_REQUEST['qrystr']);
-		}
-
-		if (!empty($lastscript)) {
-			$_SESSION['lastscript'] = $lastscript;
-		}
+		$lastqrystr = Request::any('qrystr', '');
 		if (!empty($lastqrystr)) {
+			$lastqrystr = urlencode($lastqrystr);
 			$_SESSION['lastqrystr'] = $lastqrystr;
 		}
 
@@ -485,8 +535,8 @@ if ($action == 'forgotpwd') {
 	$message = '';
 
 	if (!empty($_POST)) {
-		$loginname = Validate::validate($_POST['loginname'], 'loginname');
-		$email = Validate::validateEmail($_POST['loginemail']);
+		$loginname = Validate::validate(Request::post('loginname'), 'loginname');
+		$email = Validate::validateEmail(Request::post('loginemail'));
 		$result_stmt = Database::prepare("SELECT `adminid`, `customerid`, `customernumber`, `firstname`, `name`, `company`, `email`, `loginname`, `def_language`, `deactivated` FROM `" . TABLE_PANEL_CUSTOMERS . "`
 			WHERE `loginname`= :loginname
 			AND `email`= :email");
@@ -653,7 +703,7 @@ if ($action == 'forgotpwd') {
 							$rstlog = FroxlorLogger::getInstanceOf([
 								'loginname' => 'password_reset'
 							]);
-							$rstlog->logAction(FroxlorLogger::USR_ACTION, LOG_WARNING, "User '" . $loginname . "' requested to set a new password, but was not found in database!");
+							$rstlog->logAction(FroxlorLogger::USR_ACTION, LOG_WARNING, "Unknown user requested to set a new password, but was not found in database!");
 							$message = lng('login.usernotfound');
 						}
 
@@ -683,9 +733,9 @@ if ($action == 'resetpwd') {
 		"oldest" => time() - 86400
 	]);
 
-	if (isset($_GET['resetcode']) && strlen($_GET['resetcode']) == 50) {
+	$activationcode = Request::get('resetcode');
+	if (!empty($activationcode) && strlen($activationcode) == 50) {
 		// Check if activation code is valid
-		$activationcode = $_GET['resetcode'];
 		$timestamp = substr($activationcode, 15, 10);
 		$third = substr($activationcode, 25, 15);
 		$check = substr($activationcode, 40, 10);
@@ -700,8 +750,8 @@ if ($action == 'resetpwd') {
 
 				if ($result !== false) {
 					try {
-						$new_password = Crypt::validatePassword($_POST['new_password'], true);
-						$new_password_confirm = Crypt::validatePassword($_POST['new_password_confirm'], true);
+						$new_password = Crypt::validatePassword(Request::post('new_password'), true);
+						$new_password_confirm = Crypt::validatePassword(Request::post('new_password_confirm'), true);
 					} catch (Exception $e) {
 						$message = $e->getMessage();
 					}
@@ -830,8 +880,8 @@ function finishLogin($userinfo)
 			$theme = $userinfo['theme'];
 		} else {
 			$theme = Settings::Get('panel.default_theme');
-			CurrentUser::setField('theme', $theme);
 		}
+		CurrentUser::setField('theme', $theme);
 
 		$qryparams = [];
 		if (!empty($_SESSION['lastqrystr'])) {

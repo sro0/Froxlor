@@ -95,6 +95,7 @@ CREATE TABLE `mail_virtual` (
   `iscatchall` tinyint(1) unsigned NOT NULL default '0',
   `description` varchar(255) NOT NULL DEFAULT '',
   `spam_tag_level` float(4,1) NOT NULL DEFAULT 7.0,
+  `rewrite_subject` tinyint(1) NOT NULL default '1',
   `spam_kill_level` float(4,1) NOT NULL DEFAULT 14.0,
   `bypass_spam` tinyint(1) NOT NULL default '0',
   `policy_greylist` tinyint(1) NOT NULL default '1',
@@ -495,7 +496,6 @@ opcache.save_comments
 opcache.use_cwd
 opcache.fast_shutdown'),
 	('phpfpm', 'ini_admin_values', 'cgi.redirect_status_env
-date.timezone
 disable_classes
 disable_functions
 error_log
@@ -730,8 +730,8 @@ opcache.validate_timestamps'),
 	('panel', 'logo_overridecustom', '0'),
 	('panel', 'settings_mode', '0'),
 	('panel', 'menu_collapsed', '1'),
-	('panel', 'version', '2.2.0-dev1'),
-	('panel', 'db_version', '202401090');
+	('panel', 'version', '2.2.5'),
+	('panel', 'db_version', '202409280');
 
 
 DROP TABLE IF EXISTS `panel_tasks`;
@@ -1048,5 +1048,16 @@ CREATE TABLE `panel_loginlinks` (
   `valid_until` int(15) NOT NULL,
   `allowed_from` text NOT NULL,
   UNIQUE KEY `loginname` (`loginname`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+
+DROP TABLE IF EXISTS `panel_2fa_tokens`;
+CREATE TABLE `panel_2fa_tokens` (
+  `id` int(11) NOT NULL auto_increment,
+  `selector` varchar(200) NOT NULL,
+  `token` varchar(200) NOT NULL,
+  `userid` int(11) NOT NULL default '0',
+  `valid_until` int(15) NOT NULL,
+  PRIMARY KEY  (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 FROXLORSQL;

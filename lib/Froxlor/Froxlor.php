@@ -31,15 +31,15 @@ final class Froxlor
 {
 
 	// Main version variable
-	const VERSION = '2.2.0-dev1';
+	const VERSION = '2.2.5';
 
 	// Database version (YYYYMMDDC where C is a daily counter)
-	const DBVERSION = '202401090';
+	const DBVERSION = '202409280';
 
 	// Distribution branding-tag (used for Debian etc.)
 	const BRANDING = '';
 
-	const DOCS_URL = 'https://docs.froxlor.org/v2.2/';
+	const DOCS_URL = 'https://docs.froxlor.org';
 
 	/**
 	 * return path to where froxlor is installed, e.g.
@@ -52,6 +52,14 @@ final class Froxlor
 		return dirname(__DIR__, 2) . '/';
 	}
 
+	public static function getDocsUrl(): string
+	{
+		if (preg_match('/(.+)-(dev|beta|rc)\d+$/', self::VERSION)) {
+			return self::DOCS_URL . '/dev/';
+		}
+		return self::DOCS_URL . '/v' . self::getShortVersion() . '/';
+	}
+
 	/**
 	 * return basic version
 	 *
@@ -60,6 +68,16 @@ final class Froxlor
 	public static function getVersion(): string
 	{
 		return self::VERSION;
+	}
+
+	/**
+	 * return short basic version
+	 *
+	 * @return string
+	 */
+	public static function getShortVersion(): string
+	{
+		return explode(".", self::VERSION)[0] . '.' . explode(".", self::VERSION)[1];
 	}
 
 	/**

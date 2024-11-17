@@ -176,15 +176,19 @@ class Core
 			$filename = "/tmp/froxlor_backup_" . date('YmdHi') . ".sql";
 
 			// look for mysqldump
+			$section = 'mysqldump';
 			if (file_exists("/usr/bin/mysqldump")) {
 				$mysql_dump = '/usr/bin/mysqldump';
 			} elseif (file_exists("/usr/local/bin/mysqldump")) {
 				$mysql_dump = '/usr/local/bin/mysqldump';
+			} elseif (file_exists("/usr/bin/mariadb-dump")) {
+				$mysql_dump = '/usr/bin/mariadb-dump';
+				$section = 'mariadb-dump';
 			}
 
 			// create temporary .cnf file
 			$cnffilename = "/tmp/froxlor_dump.cnf";
-			$dumpcnf = "[mysqldump]" . PHP_EOL . "password=\"" . $this->validatedData['mysql_root_pass'] . "\"" . PHP_EOL;
+			$dumpcnf = "[".$section."]" . PHP_EOL . "password=\"" . $this->validatedData['mysql_root_pass'] . "\"" . PHP_EOL;
 			file_put_contents($cnffilename, $dumpcnf);
 
 			// make the backup
@@ -195,7 +199,7 @@ class Core
 				@unlink($cnffilename);
 				if (stristr(implode(" ", $output), "error")) {
 					throw new Exception(lng('install.errors.mysqldump_backup_failed'));
-				} else if (!file_exists($filename)) {
+				} elseif (!file_exists($filename)) {
 					throw new Exception(lng('install.errors.sql_backup_file_missing'));
 				}
 			} else {
@@ -379,7 +383,7 @@ class Core
 			$this->updateSetting($upd_stmt, 1, 'system', 'leenabled');
 			$this->updateSetting($upd_stmt, 1, 'system', 'le_froxlor_enabled');
 		}
-		$this->updateSetting($upd_stmt, $this->validatedData['servername'], 'system', 'hostname');
+		$this->updateSetting($upd_stmt, strtolower($this->validatedData['servername']), 'system', 'hostname');
 		$this->updateSetting($upd_stmt, 'en', 'panel', 'standardlanguage'); // TODO: set language
 		$this->updateSetting($upd_stmt, $this->validatedData['mysql_access_host'], 'system', 'mysql_access_host');
 		$this->updateSetting($upd_stmt, $this->validatedData['webserver'], 'system', 'webserver');
@@ -653,14 +657,18 @@ class Core
 
 	private function createJsonArray(&$db_user)
 	{
-		// use traffic analyzer from settings as we could define defaults in the lib/configfiles/*.xml templates
+		// use traffic analyzer and ftpserver from settings as we could define defaults in the lib/configfiles/*.xml templates
 		// which can be useful for third-party package-maintainer (e.g. other distros) to have more control
 		// over the installation defaults (less hardcoded values)
-		$traffic_analyzer = $db_user->query("
-			SELECT `value` FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'system' AND `varname` = 'traffictool'
+		$custom_dependency = $db_user->query("
+			SELECT `varname`, `value` FROM `" . TABLE_PANEL_SETTINGS . "`
+			WHERE `settinggroup` = 'system' AND (`varname` = 'traffictool' OR `varname` = 'ftpserver')
 		");
-		$ta_result = $traffic_analyzer->fetch(\PDO::FETCH_ASSOC);
-		$system_params = ["cron", "libnssextrausers", "logrotate", $ta_result['value']];
+		$cd_result = $custom_dependency->fetchAll(\PDO::FETCH_KEY_PAIR);
+		$system_params = ["cron", "libnssextrausers", "logrotate"];
+		if (isset($cd_result['traffictool'])) {
+			$system_params[] = $cd_result['traffictool'];
+		}
 		if ($this->validatedData['webserver_backend'] == 'php-fpm') {
 			$system_params[] = 'php-fpm';
 		} elseif ($this->validatedData['webserver_backend'] == 'fcgid') {
@@ -673,7 +681,7 @@ class Core
 			'smtp' => 'postfix_dovecot',
 			'mail' => 'dovecot_postfix2',
 			'antispam' => 'rspamd',
-			'ftp' => 'proftpd',
+			'ftp' => $cd_result['ftpserver'] ?? 'x',
 			'system' => $system_params
 		];
 		$_SESSION['installation']['json_params'] = json_encode($json_params);

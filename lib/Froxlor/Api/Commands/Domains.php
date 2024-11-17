@@ -274,7 +274,8 @@ class Domains extends ApiCommand implements ResourceEntity
 	 *            $override_tls is true
 	 * @param string $description
 	 *            optional custom description (currently not used/shown in the frontend), default empty
-	 *
+	 * @param bool $is_stdsubdomain (internally)
+	 *            optional whether this is a standard subdomain for a customer which is being added so no usage is decreased
 	 * @access admin
 	 * @return string json-encoded array
 	 * @throws Exception
@@ -282,7 +283,8 @@ class Domains extends ApiCommand implements ResourceEntity
 	public function add()
 	{
 		if ($this->isAdmin()) {
-			if ($this->getUserDetail('domains_used') < $this->getUserDetail('domains') || $this->getUserDetail('domains') == '-1') {
+			$is_stdsubdomain = $this->isInternal() ? $this->getBoolParam('is_stdsubdomain', true, 0) : false;
+			if ($is_stdsubdomain || $this->getUserDetail('domains_used') < $this->getUserDetail('domains') || $this->getUserDetail('domains') == '-1') {
 				// parameters
 				$p_domain = $this->getParam('domain');
 
@@ -519,7 +521,8 @@ class Domains extends ApiCommand implements ResourceEntity
 						$mod_fcgid_maxrequests = '-1';
 					}
 				} else {
-					$phpenabled = '1';
+					// set default to whether the customer has php enabled or not
+					$phpenabled = $customer['phpenabled'];
 					$openbasedir = '1';
 
 					if ((int)Settings::Get('phpfpm.enabled') == 1) {
@@ -794,12 +797,15 @@ class Domains extends ApiCommand implements ResourceEntity
 					$ins_data['id'] = $domainid;
 					unset($ins_data);
 
-					$upd_stmt = Database::prepare("
-						UPDATE `" . TABLE_PANEL_ADMINS . "` SET `domains_used` = `domains_used` + 1
-						WHERE `adminid` = :adminid");
-					Database::pexecute($upd_stmt, [
-						'adminid' => $adminid
-					], true, true);
+					if (!$is_stdsubdomain) {
+						$upd_stmt = Database::prepare("
+							UPDATE `" . TABLE_PANEL_ADMINS . "` SET `domains_used` = `domains_used` + 1
+							WHERE `adminid` = :adminid
+						");
+						Database::pexecute($upd_stmt, [
+							'adminid' => $adminid
+						], true, true);
+					}
 
 					$ins_stmt = Database::prepare("
 						INSERT INTO `" . TABLE_DOMAINTOIP . "` SET
@@ -830,6 +836,9 @@ class Domains extends ApiCommand implements ResourceEntity
 					Cronjob::inserttask(TaskId::REBUILD_VHOST);
 					// Using nameserver, insert a task which rebuilds the server config
 					Cronjob::inserttask(TaskId::REBUILD_DNS);
+					if ($dkim == '1') {
+						Cronjob::inserttask(TaskId::REBUILD_RSPAMD);
+					}
 
 					$this->logger()->logAction(FroxlorLogger::ADM_ACTION, LOG_WARNING, "[API] added domain '" . $domain . "'");
 
@@ -1527,13 +1536,12 @@ class Domains extends ApiCommand implements ResourceEntity
 				// enabled ssl for the domain but no ssl ip/port is selected
 				Response::standardError('nosslippportgiven', '', true);
 			}
-			if (Settings::Get('system.use_ssl') == "0" || empty($ssl_ipandports)) {
+			if (Settings::Get('system.use_ssl') == "0" || empty($ssl_ipandports) || !$sslenabled) {
 				$ssl_redirect = 0;
 				$letsencrypt = 0;
 				$http2 = 0;
-				// we need this for the json_encode
-				// if ssl is disabled or no ssl-ip/port exists
-				$ssl_ipandports[] = -1;
+				// act like $remove_ssl_ipandport
+				$ssl_ipandports = [];
 
 				// HSTS
 				$hsts_maxage = 0;
@@ -1673,6 +1681,10 @@ class Domains extends ApiCommand implements ResourceEntity
 				|| $sslenabled != $result['ssl_enabled']
 			) {
 				Cronjob::inserttask(TaskId::REBUILD_VHOST);
+			}
+
+			if ($dkim != $result['dkim']) {
+				Cronjob::inserttask(TaskId::REBUILD_RSPAMD);
 			}
 
 			if ($speciallogfile != $result['speciallogfile'] && $speciallogverified != '1') {
@@ -2098,6 +2110,8 @@ class Domains extends ApiCommand implements ResourceEntity
 	 * @param bool $is_stdsubdomain
 	 *            optional, default false, specify whether it's a std-subdomain you are deleting as it does not count
 	 *            as subdomain-resource
+	 * @param bool $delete_userfiles
+	 *            optional, delete email account files on filesystem (if any), default false
 	 *
 	 * @access admin
 	 * @return string json-encoded array
@@ -2109,7 +2123,8 @@ class Domains extends ApiCommand implements ResourceEntity
 			$id = $this->getParam('id', true, 0);
 			$dn_optional = $id > 0;
 			$domainname = $this->getParam('domainname', $dn_optional, '');
-			$is_stdsubdomain = $this->getParam('is_stdsubdomain', true, 0);
+			$is_stdsubdomain = $this->getBoolParam('is_stdsubdomain', true, 0);
+			$delete_user_emailfiles = $this->getBoolParam('delete_userfiles', true, 0);
 
 			$result = $this->apiCall('Domains.get', [
 				'id' => $id,
@@ -2133,6 +2148,14 @@ class Domains extends ApiCommand implements ResourceEntity
 			$idString = implode(' OR ', $idString);
 
 			if ($idString != '') {
+				if ($delete_user_emailfiles) {
+					// determine all connected email-accounts
+					$emailaccount_sel = Database::prepare("SELECT `email`, `homedir`, `maildir` FROM `" . TABLE_MAIL_USERS . "` WHERE " . $idString);
+					Database::pexecute($emailaccount_sel, $paramString, true, true);
+					while ($emailacc_row = $emailaccount_sel->fetch(PDO::FETCH_ASSOC)) {
+						Cronjob::inserttask(TaskId::DELETE_EMAIL_DATA, $emailacc_row['email'], FileDir::makeCorrectDir($emailacc_row['homedir'] . '/' . $emailacc_row['maildir']));
+					}
+				}
 				$del_stmt = Database::prepare("
 						DELETE FROM `" . TABLE_MAIL_USERS . "` WHERE " . $idString);
 				Database::pexecute($del_stmt, $paramString, true, true);
