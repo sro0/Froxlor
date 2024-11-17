@@ -2706,6 +2706,7 @@ subject = "***SPAM*** %s"
 						<file name="/etc/rspamd/local.d/arc.conf"
 							  chown="root:root" chmod="0644" backup="true">
 							<content><![CDATA[
+use_esld = false;
 try_fallback = true;
 ### Enable DKIM signing for alias sender addresses
 allow_username_mismatch = true;
