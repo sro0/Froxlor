@@ -35,7 +35,7 @@ if (!defined('_CRON_UPDATE')) {
 	}
 }
 
-if (Froxlor::isFroxlorVersion('2.1.4')) {
+if (Froxlor::isFroxlorVersion('2.1.9')) {
 	Update::showUpdateStep("Enhancing virtual email table");
 	Database::query("ALTER TABLE `" . TABLE_MAIL_VIRTUAL . "` ADD `spam_tag_level` float(4,1) NOT NULL DEFAULT 7.0;");
 	Database::query("ALTER TABLE `" . TABLE_MAIL_VIRTUAL . "` ADD `spam_kill_level` float(4,1) NOT NULL DEFAULT 14.0;");
@@ -55,6 +55,10 @@ if (Froxlor::isFroxlorVersion('2.1.4')) {
 	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_domains';");
 	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_algorithm';");
 	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_notes';");
+	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_add_adsp';");
+	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_dkimkeys';");
+	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_servicetype';");
+	Database::query("DELETE FROM `" . TABLE_PANEL_SETTINGS . "` WHERE `settinggroup` = 'dkim' AND `varname` = 'dkim_add_adsppolicy';");
 	Update::lastStepStatus(0);
 
 	if ($antispam_activated) {
@@ -71,6 +75,18 @@ if (Froxlor::isFroxlorVersion('2.1.4')) {
 			Database::pexecute($upd_stmt, ['pkey' => $pubkey, 'did' => $domain['id']]);
 		}
 		Update::lastStepStatus(0);
+
+		Update::showUpdateStep("Configure antispam services");
+		$froxlorCliBin = Froxlor::getInstallDir() . '/bin/froxlor-cli';
+		$currentDistro = Settings::Get('system.distribution');
+		$manual_command = <<<EOC
+{$froxlorCliBin} froxlor:config-services -a '{"http":"x","dns":"x","smtp":"x","mail":"x","antispam":"rspamd","ftp":"x","distro":"{$currentDistro}","system":[]}'
+EOC;
+		Update::lastStepStatus(
+			1,
+			'manual action needed',
+			"Please run the following command manually as root:<br><pre>" . $manual_command . "</pre>"
+		);
 	} else {
 		Update::showUpdateStep("Removing existing domainkeys because antispam is disabled");
 		Database::query("UPDATE `" . TABLE_PANEL_DOMAINS . "` SET `dkim` = '0', `dkim_id` = '0', `dkim_privkey` = '', `dkim_pubkey` = '' WHERE `dkim` = '1';");
@@ -100,4 +116,85 @@ if (Froxlor::isDatabaseVersion('202312230')) {
 	Update::lastStepStatus(0);
 
 	Froxlor::updateToDbVersion('202401090');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.0-dev1')) {
+	Update::showUpdateStep("Updating from 2.2.0-dev1 to 2.2.0-rc1", false);
+	Froxlor::updateToVersion('2.2.0-rc1');
+}
+
+if (Froxlor::isDatabaseVersion('202401090')) {
+
+	Update::showUpdateStep("Adding new table for 2fa tokens");
+	Database::query("DROP TABLE IF EXISTS `panel_2fa_tokens`;");
+	$sql = "CREATE TABLE `panel_2fa_tokens` (
+	  `id` int(11) NOT NULL auto_increment,
+	  `selector` varchar(20) NOT NULL,
+	  `token` varchar(200) NOT NULL,
+	  `userid` int(11) NOT NULL default '0',
+	  `valid_until` int(15) NOT NULL,
+	  PRIMARY KEY  (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;";
+	Database::query($sql);
+	Update::lastStepStatus(0);
+
+	Froxlor::updateToDbVersion('202407200');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.0-rc1')) {
+	Update::showUpdateStep("Updating from 2.2.0-rc1 to 2.2.0-rc2", false);
+	Froxlor::updateToVersion('2.2.0-rc2');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.0-rc2')) {
+	Update::showUpdateStep("Updating from 2.2.0-rc2 to 2.2.0-rc3", false);
+	Froxlor::updateToVersion('2.2.0-rc3');
+}
+
+if (Froxlor::isDatabaseVersion('202407200')) {
+
+	Update::showUpdateStep("Adjusting field in 2fa-token table");
+	Database::query("ALTER TABLE `panel_2fa_tokens` CHANGE COLUMN `selector` `selector` varchar(200) NOT NULL;");
+	Update::lastStepStatus(0);
+
+	Froxlor::updateToDbVersion('202408140');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.0-rc3')) {
+	Update::showUpdateStep("Updating from 2.2.0-rc3 to 2.2.0 stable", false);
+	Froxlor::updateToVersion('2.2.0');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.0')) {
+	Update::showUpdateStep("Updating from 2.2.0 to 2.2.1", false);
+	Froxlor::updateToVersion('2.2.1');
+}
+
+if (Froxlor::isDatabaseVersion('202408140')) {
+
+	Update::showUpdateStep("Adding new rewrite-subject field to email table");
+	Database::query("ALTER TABLE `" . TABLE_MAIL_VIRTUAL . "` ADD `rewrite_subject` tinyint(1) NOT NULL default '1' AFTER `spam_tag_level`;");
+	Update::lastStepStatus(0);
+
+	Froxlor::updateToDbVersion('202409280');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.1')) {
+	Update::showUpdateStep("Updating from 2.2.1 to 2.2.2", false);
+	Froxlor::updateToVersion('2.2.2');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.2')) {
+	Update::showUpdateStep("Updating from 2.2.2 to 2.2.3", false);
+	Froxlor::updateToVersion('2.2.3');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.3')) {
+	Update::showUpdateStep("Updating from 2.2.3 to 2.2.4", false);
+	Froxlor::updateToVersion('2.2.4');
+}
+
+if (Froxlor::isFroxlorVersion('2.2.4')) {
+	Update::showUpdateStep("Updating from 2.2.4 to 2.2.5", false);
+	Froxlor::updateToVersion('2.2.5');
 }

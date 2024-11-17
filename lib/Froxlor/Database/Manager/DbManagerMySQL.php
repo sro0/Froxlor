@@ -76,11 +76,14 @@ class DbManagerMySQL
 	 *            optional, whether the password is encrypted or not, default false
 	 * @param bool $update
 	 *            optional, whether to update the password only (not create user)
+	 * @param bool $grant_access_prefix
+	 *            optional, whether the given user will have access to all databases starting with the username, default false
 	 * @throws \Exception
 	 */
-	public function grantPrivilegesTo(string $username, $password, string $access_host = null, bool $p_encrypted = false, bool $update = false)
+	public function grantPrivilegesTo(string $username, $password, string $access_host = null, bool $p_encrypted = false, bool $update = false, bool $grant_access_prefix = false)
 	{
-		$pwd_plugin = 'mysql_native_password';
+		// this is required for mysql8
+		$pwd_plugin = 'caching_sha2_password';
 		if (is_array($password) && count($password) == 2) {
 			$pwd_plugin = $password['plugin'];
 			$password = $password['password'];
@@ -108,7 +111,7 @@ class DbManagerMySQL
 			]);
 			// grant privileges
 			$stmt = Database::prepare("
-				GRANT ALL ON `" . $username . "`.* TO :username@:host
+				GRANT ALL ON `" . $username . ($grant_access_prefix ? '%' : '') . "`.* TO :username@:host
 			");
 			Database::pexecute($stmt, [
 				"username" => $username,
@@ -184,21 +187,23 @@ class DbManagerMySQL
 	 */
 	public function deleteUser(string $username, string $host)
 	{
-		if (Database::getAttribute(PDO::ATTR_SERVER_VERSION) < '5.0.2') {
-			// Revoke privileges (only required for MySQL 4.1.2 - 5.0.1)
-			$stmt = Database::prepare("REVOKE ALL PRIVILEGES ON * . * FROM `" . $username . "`@`" . $host . "`");
-			Database::pexecute($stmt);
+		if ($this->userExistsOnHost($username, $host)) {
+			if (version_compare(Database::getAttribute(PDO::ATTR_SERVER_VERSION), '5.0.2', '<')) {
+				// Revoke privileges (only required for MySQL 4.1.2 - 5.0.1)
+				$stmt = Database::prepare("REVOKE ALL PRIVILEGES ON * . * FROM `" . $username . "`@`" . $host . "`");
+				Database::pexecute($stmt);
+			}
+			// as of MySQL 5.0.2 this also revokes privileges. (requires MySQL 4.1.2+)
+			if (version_compare(Database::getAttribute(PDO::ATTR_SERVER_VERSION), '5.7.0', '<')) {
+				$stmt = Database::prepare("DROP USER :username@:host");
+			} else {
+				$stmt = Database::prepare("DROP USER IF EXISTS :username@:host");
+			}
+			Database::pexecute($stmt, [
+				"username" => $username,
+				"host" => $host
+			]);
 		}
-		// as of MySQL 5.0.2 this also revokes privileges. (requires MySQL 4.1.2+)
-		if (version_compare(Database::getAttribute(PDO::ATTR_SERVER_VERSION), '5.7.0', '<')) {
-			$stmt = Database::prepare("DROP USER :username@:host");
-		} else {
-			$stmt = Database::prepare("DROP USER IF EXISTS :username@:host");
-		}
-		Database::pexecute($stmt, [
-			"username" => $username,
-			"host" => $host
-		]);
 	}
 
 	/**
@@ -219,17 +224,31 @@ class DbManagerMySQL
 	 *
 	 * @param string $username
 	 * @param string $host
+	 * @param bool $grant_access_prefix
 	 * @throws \Exception
 	 */
-	public function enableUser(string $username, string $host)
+	public function enableUser(string $username, string $host, bool $grant_access_prefix = false)
 	{
 		// check whether user exists to avoid errors
+		if ($this->userExistsOnHost($username, $host)) {
+			Database::query('GRANT ALL PRIVILEGES ON `' . $username . ($grant_access_prefix ? '%' : '') . '`.* TO `' . $username . '`@`' . $host . '`');
+			Database::query('GRANT ALL PRIVILEGES ON `' . str_replace('_', '\_', $username) . ($grant_access_prefix ? '%' : '') . '` . * TO `' . $username . '`@`' . $host . '`');
+		}
+	}
+
+	/**
+	 * Check whether a given username exists for the given host
+	 *
+	 * @param string $username
+	 * @param string $host
+	 * @return bool
+	 * @throws \Exception
+	 */
+	public function userExistsOnHost(string $username, string $host): bool
+	{
 		$exist_check_stmt = Database::prepare("SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '" . $username . "' AND host = '" . $host . "')");
 		$exist_check = Database::pexecute_first($exist_check_stmt);
-		if ($exist_check && array_pop($exist_check) == '1') {
-			Database::query('GRANT ALL PRIVILEGES ON `' . $username . '`.* TO `' . $username . '`@`' . $host . '`');
-			Database::query('GRANT ALL PRIVILEGES ON `' . str_replace('_', '\_', $username) . '` . * TO `' . $username . '`@`' . $host . '`');
-		}
+		return ($exist_check && array_pop($exist_check) == '1');
 	}
 
 	/**
@@ -262,7 +281,7 @@ class DbManagerMySQL
 				if (!isset($allsqlusers[$row['User']]) || !is_array($allsqlusers[$row['User']])) {
 					$allsqlusers[$row['User']] = [
 						'password' => $row['Password'] ?? $row['authentication_string'],
-						'plugin' => $row['plugin'] ?? 'mysql_native_password',
+						'plugin' => $row['plugin'] ?? 'caching_sha2_password',
 						'hosts' => []
 					];
 				}

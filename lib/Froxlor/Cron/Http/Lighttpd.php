@@ -273,7 +273,7 @@ class Lighttpd extends HttpConfigBase
 						if (!empty(Settings::Get('system.dhparams_file'))) {
 							$dhparams = FileDir::makeCorrectFile(Settings::Get('system.dhparams_file'));
 							if (!file_exists($dhparams)) {
-								FileDir::safe_exec('openssl dhparam -out ' . escapeshellarg($dhparams) . ' 4096');
+								file_put_contents($dhparams, self::FFDHE4096);
 							}
 							$this->lighttpd_data[$vhost_filename] .= 'ssl.dh-file = "' . $dhparams . '"' . "\n";
 							$this->lighttpd_data[$vhost_filename] .= 'ssl.ec-curve = "secp384r1"' . "\n";
@@ -406,6 +406,7 @@ class Lighttpd extends HttpConfigBase
 				// Get domain's redirect code
 				$code = Domain::getDomainRedirectCode($domain['id']);
 
+				$vhost_content .= $this->getLogFiles($domain);
 				$vhost_content .= '  url.redirect-code = ' . $code . "\n";
 				$vhost_content .= '  url.redirect = (' . "\n";
 				$vhost_content .= '     "^/(.*)$" => "' . $uri . '$1"' . "\n";
@@ -755,7 +756,7 @@ class Lighttpd extends HttpConfigBase
 				if (!empty(Settings::Get('system.dhparams_file'))) {
 					$dhparams = FileDir::makeCorrectFile(Settings::Get('system.dhparams_file'));
 					if (!file_exists($dhparams)) {
-						FileDir::safe_exec('openssl dhparam -out ' . escapeshellarg($dhparams) . ' 4096');
+						file_put_contents($dhparams, self::FFDHE4096);
 					}
 					$ssl_settings .= 'ssl.dh-file = "' . $dhparams . '"' . "\n";
 					$ssl_settings .= 'ssl.ec-curve = "secp384r1"' . "\n";

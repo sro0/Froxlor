@@ -47,6 +47,8 @@
 											{{ macros.domainWithSan(td.data.data) }}
 										{% elseif td.data.macro == 'actions' %}
 											{{ macros.actions(td.data.data) }}
+										{% elseif td.data.macro == 'type2fa' %}
+											{{ macros.type2fa(td.data.data) }}
 										{% else %}
 											Table macro '{{ td.data.macro|json_encode }}' is not implemented!
 											Unable to handle this data: {{ td.data|json_encode }}
@@ -64,6 +66,14 @@
 				{{ pagination.paging(listing.pagination) }}
 			{% endif %}
 		</div>
+		{# handle potential modal-html if defined by actions #}
+		{% for tr in listing.table.tr %}
+			{% for td in tr.td %}
+				{% if td.data is iterable and td.data.macro == 'actions' %}
+					{{ macros.actions_modal(td.data.data) }}
+				{% endif %}
+			{% endfor %}
+		{% endfor %}
 	{% endif %}
 
 	<!-- Modal -->

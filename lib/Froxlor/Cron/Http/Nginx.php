@@ -399,7 +399,7 @@ class Nginx extends HttpConfigBase
 				if (!empty(Settings::Get('system.dhparams_file'))) {
 					$dhparams = FileDir::makeCorrectFile(Settings::Get('system.dhparams_file'));
 					if (!file_exists($dhparams)) {
-						FileDir::safe_exec('openssl dhparam -out ' . escapeshellarg($dhparams) . ' 4096');
+						file_put_contents($dhparams, self::FFDHE4096);
 					}
 					$sslsettings .= "\t" . 'ssl_dhparam ' . $dhparams . ';' . "\n";
 				}
@@ -604,6 +604,7 @@ class Nginx extends HttpConfigBase
 				// Get domain's redirect code
 				$code = Domain::getDomainRedirectCode($domain['id']);
 
+				$vhost_content .= $this->getLogFiles($domain);
 				$vhost_content .= "\t" . 'location / {' . "\n";
 				$vhost_content .= "\t\t" . 'return ' . $code . ' ' . $uri . '$request_uri;' . "\n";
 				$vhost_content .= "\t" . '}' . "\n";

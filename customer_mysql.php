@@ -30,8 +30,10 @@ use Froxlor\Api\Commands\Mysqls;
 use Froxlor\Api\Commands\MysqlServer;
 use Froxlor\CurrentUser;
 use Froxlor\Database\Database;
+use Froxlor\Database\DbManager;
 use Froxlor\FroxlorLogger;
 use Froxlor\Settings;
+use Froxlor\System\Crypt;
 use Froxlor\UI\Collection;
 use Froxlor\UI\HTML;
 use Froxlor\UI\Listing;
@@ -74,17 +76,32 @@ if ($page == 'overview' || $page == 'mysqls') {
 			];
 		}
 
+		$view = 'user/table.html.twig';
+		if ($collection->count() > 0) {
+			$view = 'user/table-note.html.twig';
+
+			$actions_links[] = [
+				'href' => $linker->getLink(['section' => 'mysql', 'page' => 'mysqls', 'action' => 'global_user']),
+				'label' => lng('mysql.edit_global_user'),
+				'icon' => 'fa-solid fa-user-tie',
+				'class' => 'btn-outline-secondary'
+			];
+		}
+
 		$actions_links[] = [
-			'href' => \Froxlor\Froxlor::DOCS_URL . 'user-guide/databases/',
+			'href' => \Froxlor\Froxlor::getDocsUrl() . 'user-guide/databases/',
 			'target' => '_blank',
 			'icon' => 'fa-solid fa-circle-info',
 			'class' => 'btn-outline-secondary'
 		];
 
-		UI::view('user/table.html.twig', [
+		UI::view($view, [
 			'listing' => Listing::format($collection, $mysql_list_data, 'mysql_list'),
 			'actions_links' => $actions_links,
-			'entity_info' => lng('mysql.description')
+			'entity_info' => lng('mysql.description'),
+			// alert-box
+			'type' => 'info',
+			'alert_msg' => lng('mysql.globaluserinfo', [$userinfo['loginname']]),
 		]);
 	} elseif ($action == 'delete' && $id != 0) {
 		try {
@@ -106,9 +123,9 @@ if ($page == 'overview' || $page == 'mysqls') {
 				$result['dbserver'] = 0;
 			}
 
-			if (isset($_POST['send']) && $_POST['send'] == 'send') {
+			if (Request::post('send') == 'send') {
 				try {
-					Mysqls::getLocal($userinfo, $_POST)->delete();
+					Mysqls::getLocal($userinfo, Request::postAll())->delete();
 				} catch (Exception $e) {
 					Response::dynamicError($e->getMessage());
 				}
@@ -129,9 +146,9 @@ if ($page == 'overview' || $page == 'mysqls') {
 		}
 	} elseif ($action == 'add') {
 		if ($userinfo['mysqls_used'] < $userinfo['mysqls'] || $userinfo['mysqls'] == '-1') {
-			if (isset($_POST['send']) && $_POST['send'] == 'send') {
+			if (Request::post('send') == 'send') {
 				try {
-					Mysqls::getLocal($userinfo, $_POST)->add();
+					Mysqls::getLocal($userinfo, Request::postAll())->add();
 				} catch (Exception $e) {
 					Response::dynamicError($e->getMessage());
 				}
@@ -169,9 +186,9 @@ if ($page == 'overview' || $page == 'mysqls') {
 		$result = json_decode($json_result, true)['data'];
 
 		if (isset($result['databasename']) && $result['databasename'] != '') {
-			if (isset($_POST['send']) && $_POST['send'] == 'send') {
+			if (Request::post('send') == 'send') {
 				try {
-					$json_result = Mysqls::getLocal($userinfo, $_POST)->update();
+					$json_result = Mysqls::getLocal($userinfo, Request::postAll())->update();
 				} catch (Exception $e) {
 					Response::dynamicError($e->getMessage());
 				}
@@ -198,6 +215,46 @@ if ($page == 'overview' || $page == 'mysqls') {
 					'editid' => $id
 				]);
 			}
+		}
+	} elseif ($action == 'global_user') {
+
+		$allowed_mysqlservers = json_decode($userinfo['allowed_mysqlserver'] ?? '[]', true);
+		if ($userinfo['mysqls'] == 0 || empty($allowed_mysqlservers)) {
+			Response::dynamicError('No permission');
+		}
+
+		if (Request::post('send') == 'send') {
+
+			$new_password = Crypt::validatePassword(Request::post('mysql_password'));
+			foreach ($allowed_mysqlservers as $dbserver) {
+				// require privileged access for target db-server
+				Database::needRoot(true, $dbserver, false);
+				// get DbManager
+				$dbm = new DbManager($log);
+				// give permission to the user on every access-host we have
+				foreach (array_map('trim', explode(',', Settings::Get('system.mysql_access_host'))) as $mysql_access_host) {
+					if ($dbm->getManager()->userExistsOnHost($userinfo['loginname'], $mysql_access_host)) {
+						// update password
+						$dbm->getManager()->grantPrivilegesTo($userinfo['loginname'], $new_password, $mysql_access_host, false, true, true);
+					} else {
+						// create missing user
+						$dbm->getManager()->grantPrivilegesTo($userinfo['loginname'], $new_password, $mysql_access_host, false, false, true);
+					}
+				}
+				$dbm->getManager()->flushPrivileges();
+			}
+
+			Response::redirectTo($filename, [
+				'page' => 'overview'
+			]);
+		} else {
+			$mysql_global_user_data = include_once dirname(__FILE__) . '/lib/formfields/customer/mysql/formfield.mysql_global_user.php';
+
+			UI::view('user/form.html.twig', [
+				'formaction' => $linker->getLink(['section' => 'mysql', 'page' => 'mysqls', 'action' => 'global_user']),
+				'formdata' => $mysql_global_user_data['mysql_global_user'],
+				'editid' => $id
+			]);
 		}
 	}
 }

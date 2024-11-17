@@ -374,6 +374,9 @@ class PhpHelper
 	): bool
 	{
 		foreach ($haystack as $key => $value) {
+			if (empty($value)) {
+				continue;
+			}
 			$pathkey = empty($currentKey) ? $key : $currentKey . '.' . $key;
 			if (is_array($value)) {
 				self::recursive_array_search($needle, $value, $keys, $pathkey);
@@ -416,6 +419,10 @@ class PhpHelper
 			'mysql_unprivileged_pass',
 			'admin_pass',
 			'admin_pass_confirm',
+			'panel_password_special_char',
+			'old_password',
+			'new_password',
+			'new_password_confirm',
 		];
 		if (!empty($global)) {
 			$tmp = $global;

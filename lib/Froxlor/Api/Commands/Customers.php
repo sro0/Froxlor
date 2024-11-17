@@ -171,6 +171,7 @@ class Customers extends ApiCommand implements ResourceEntity
 	 * create a new customer with default ftp-user and standard-subdomain (if wanted)
 	 *
 	 * @param string $email
+	 *                             required, email address of new customer
 	 * @param string $name
 	 *                             optional if company is set, else required
 	 * @param string $firstname
@@ -189,8 +190,9 @@ class Customers extends ApiCommand implements ResourceEntity
 	 *                             optional
 	 * @param int $customernumber
 	 *                             optional
-	 * @param string $def_language ,
-	 *                             optional, default is system-default language
+	 * @param string $def_language
+	 *                             optional, ISO 639-1 language code (e.g. 'en', 'de', see lng-folder for supported languages),
+	 *                             default is system-default language
 	 * @param bool $gui_access
 	 *                             optional, allow login via webui, if false ONLY the login via webui is disallowed; default true
 	 * @param bool $api_allowed
@@ -273,7 +275,7 @@ class Customers extends ApiCommand implements ResourceEntity
 	 *                             optional, specify a hosting-plan to set certain resource-values from the plan
 	 *                             instead of specifying them
 	 * @param array $allowed_mysqlserver
-	 *        	                   optional, array of IDs of defined mysql-servers the customer is allowed to use,
+	 *                             optional, array of IDs of defined mysql-servers the customer is allowed to use,
 	 *                             default is to allow the default dbserver (id=0)
 	 *
 	 * @access admin
@@ -403,11 +405,14 @@ class Customers extends ApiCommand implements ResourceEntity
 				$allowed_phpconfigs = array_map('intval', $allowed_phpconfigs);
 
 				if (empty($allowed_phpconfigs) && $phpenabled == 1) {
-					Response::standardError('customerphpenabledbutnoconfig', '', true);
+					// only required if not using mod_php
+					if ((int)Settings::Get('system.mod_fcgid') == 1 || (int)Settings::Get('phpfpm.enabled') == 1) {
+						Response::standardError('customerphpenabledbutnoconfig', '', true);
+					}
 				}
 
 				$allowed_mysqlserver = array();
-				if (! empty($p_allowed_mysqlserver) && is_array($p_allowed_mysqlserver)) {
+				if (!empty($p_allowed_mysqlserver) && is_array($p_allowed_mysqlserver)) {
 					foreach ($p_allowed_mysqlserver as $allowed_ms) {
 						$allowed_ms = intval($allowed_ms);
 						$allowed_mysqlserver[] = $allowed_ms;
@@ -454,6 +459,28 @@ class Customers extends ApiCommand implements ResourceEntity
 						// Additional filtering for Bug #962
 						if (function_exists('posix_getpwnam') && !in_array("posix_getpwnam", explode(",", ini_get('disable_functions'))) && posix_getpwnam($loginname)) {
 							Response::standardError('loginnameissystemaccount', $loginname, true);
+						}
+
+						// blacklist some system-internal names that might lead to issues
+						Database::needSqlData();
+						$sqldata = Database::getSqlData();
+						Database::needRoot(true);
+						Database::needSqlData();
+						$sqlrdata = Database::getSqlData();
+						$login_blacklist = [
+							'root',
+							'admin',
+							'froxroot',
+							'froxlor',
+							$sqldata['user'],
+							$sqldata['db'],
+							$sqlrdata['user'],
+						];
+						unset($sqldata);
+						unset($sqlrdata);
+						$login_blacklist = array_unique($login_blacklist);
+						if (in_array($loginname, $login_blacklist)) {
+							Response::standardError('loginnameisreservedname', $loginname, true);
 						}
 					} else {
 						$accountnumber = intval(Settings::Get('system.lastaccountnumber')) + 1;
@@ -711,11 +738,12 @@ class Customers extends ApiCommand implements ResourceEntity
 							'adminid' => $this->getUserDetail('adminid'),
 							'docroot' => $documentroot,
 							'phpenabled' => $phpenabled,
-							'openbasedir' => '1'
+							'openbasedir' => '1',
+							'is_stdsubdomain' => 1
 						];
 						$domainid = -1;
 						try {
-							$std_domain = $this->apiCall('Domains.add', $ins_data);
+							$std_domain = $this->apiCall('Domains.add', $ins_data, true);
 							$domainid = $std_domain['id'];
 						} catch (Exception $e) {
 							$this->logger()->logAction(FroxlorLogger::ADM_ACTION, LOG_ERR, "[API] Unable to add standard-subdomain: " . $e->getMessage());
@@ -731,6 +759,22 @@ class Customers extends ApiCommand implements ResourceEntity
 							], true, true);
 							$this->logger()->logAction(FroxlorLogger::ADM_ACTION, LOG_NOTICE, "[API] automatically added standardsubdomain for user '" . $loginname . "'");
 							Cronjob::inserttask(TaskId::REBUILD_VHOST);
+						}
+					}
+
+					// Create default mysql-user if enabled
+					if ($mysqls != 0) {
+						foreach ($allowed_mysqlserver as $dbserver) {
+							// require privileged access for target db-server
+							Database::needRoot(true, $dbserver, false);
+							// get DbManager
+							$dbm = new DbManager($this->logger());
+							// give permission to the user on every access-host we have
+							foreach (array_map('trim', explode(',', Settings::Get('system.mysql_access_host'))) as $mysql_access_host) {
+								$dbm->getManager()->grantPrivilegesTo($loginname, $password, $mysql_access_host, false, false, true);
+							}
+							$dbm->getManager()->flushPrivileges();
+							Database::needRoot(false);
 						}
 					}
 
@@ -933,6 +977,7 @@ class Customers extends ApiCommand implements ResourceEntity
 	 * @param string $loginname
 	 *                             optional, the loginname
 	 * @param string $email
+	 *                             optional
 	 * @param string $name
 	 *                             optional if company is set, else required
 	 * @param string $firstname
@@ -951,8 +996,9 @@ class Customers extends ApiCommand implements ResourceEntity
 	 *                             optional
 	 * @param int $customernumber
 	 *                             optional
-	 * @param string $def_language ,
-	 *                             optional, default is system-default language
+	 * @param string $def_language
+	 * *                           optional, ISO 639-1 language code (e.g. 'en', 'de', see lng-folder for supported languages),
+	 * *                           default is system-default language
 	 * @param bool $gui_access
 	 *                             optional, allow login via webui, if false ONLY the login via webui is disallowed; default true
 	 * @param bool $api_allowed
@@ -965,7 +1011,7 @@ class Customers extends ApiCommand implements ResourceEntity
 	 *                             optional, whether to show the content of custom_notes to the customer, default 0
 	 *                             (false)
 	 * @param string $new_customer_password
-	 *                             optional, iset new password
+	 *                             optional, set new password
 	 * @param bool $sendpassword
 	 *                             optional, whether to send the password to the customer after creation, default 0
 	 *                             (false)
@@ -1033,7 +1079,7 @@ class Customers extends ApiCommand implements ResourceEntity
 	 * @param string $theme
 	 *                             optional, change theme
 	 * @param array $allowed_mysqlserver
-	 *        	                   optional, array of IDs of defined mysql-servers the customer is allowed to use,
+	 *                             optional, array of IDs of defined mysql-servers the customer is allowed to use,
 	 *                             default is to allow the default dbserver (id=0)
 	 *
 	 * @access admin, customer
@@ -1122,14 +1168,17 @@ class Customers extends ApiCommand implements ResourceEntity
 				$allowed_phpconfigs = array_map('intval', $allowed_phpconfigs);
 			}
 			if (empty($allowed_phpconfigs) && $phpenabled == 1) {
-				Response::standardError('customerphpenabledbutnoconfig', '', true);
+				// only required if not using mod_php
+				if ((int)Settings::Get('system.mod_fcgid') == 1 || (int)Settings::Get('phpfpm.enabled') == 1) {
+					Response::standardError('customerphpenabledbutnoconfig', '', true);
+				}
 			}
 
 			// add permission for allowed mysql usage if customer was not allowed to use mysql prior
 			if ($result['mysqls'] == 0 && ($mysqls == -1 || $mysqls > 0)) {
 				$allowed_mysqlserver = $this->getParam('allowed_mysqlserver', true, [0]);
 			}
-			if (! empty($allowed_mysqlserver)) {
+			if (!empty($allowed_mysqlserver)) {
 				$allowed_mysqlserver = array_map('intval', $allowed_mysqlserver);
 			}
 
@@ -1287,11 +1336,33 @@ class Customers extends ApiCommand implements ResourceEntity
 				]);
 
 				$upd_stmt = Database::prepare("
-							UPDATE `" . TABLE_PANEL_DOMAINS . "` SET `deactivated`= :deactivated WHERE `customerid` = :customerid");
+					UPDATE `" . TABLE_PANEL_DOMAINS . "` SET `deactivated`= :deactivated WHERE `customerid` = :customerid
+				");
 				Database::pexecute($upd_stmt, [
 					'deactivated' => $deactivated,
 					'customerid' => $id
 				]);
+
+				// enable/disable global mysql-user (loginname)
+				$current_allowed_mysqlserver =  isset($result['allowed_mysqlserver']) && !empty($result['allowed_mysqlserver']) ? json_decode($result['allowed_mysqlserver'], true) : [];
+				foreach ($current_allowed_mysqlserver as $dbserver) {
+					// require privileged access for target db-server
+					Database::needRoot(true, $dbserver, false);
+					// get DbManager
+					$dbm = new DbManager($this->logger());
+					foreach (array_map('trim', explode(',', Settings::Get('system.mysql_access_host'))) as $mysql_access_host) {
+						// Prevent access, if deactivated
+						if ($deactivated) {
+							// failsafe if user has been deleted manually (requires MySQL 4.1.2+)
+							$dbm->getManager()->disableUser($result['loginname'], $mysql_access_host);
+						} else {
+							// Otherwise grant access
+							$dbm->getManager()->enableUser($result['loginname'], $mysql_access_host, true);
+						}
+					}
+					$dbm->getManager()->flushPrivileges();
+					Database::needRoot(false);
+				}
 
 				// Retrieve customer's databases
 				$databases_stmt = Database::prepare("SELECT * FROM " . TABLE_PANEL_DATABASES . " WHERE customerid = :customerid ORDER BY `dbserver`");
@@ -1313,9 +1384,7 @@ class Customers extends ApiCommand implements ResourceEntity
 						$last_dbserver = $row_database['dbserver'];
 					}
 
-					foreach (array_unique(explode(',', Settings::Get('system.mysql_access_host'))) as $mysql_access_host) {
-						$mysql_access_host = trim($mysql_access_host);
-
+					foreach (array_map('trim', explode(',', Settings::Get('system.mysql_access_host'))) as $mysql_access_host) {
 						// Prevent access, if deactivated
 						if ($deactivated) {
 							// failsafe if user has been deleted manually (requires MySQL 4.1.2+)
@@ -1606,6 +1675,21 @@ class Customers extends ApiCommand implements ResourceEntity
 			]);
 			$id = $result['customerid'];
 
+			// remove global mysql-user (loginname)
+			$current_allowed_mysqlserver =  isset($result['allowed_mysqlserver']) && !empty($result['allowed_mysqlserver']) ? json_decode($result['allowed_mysqlserver'], true) : [];
+			foreach ($current_allowed_mysqlserver as $dbserver) {
+				// require privileged access for target db-server
+				Database::needRoot(true, $dbserver, false);
+				// get DbManager
+				$dbm = new DbManager($this->logger());
+				foreach (array_map('trim', explode(',', Settings::Get('system.mysql_access_host'))) as $mysql_access_host) {
+					$dbm->getManager()->deleteUser($result['loginname'], $mysql_access_host);
+				}
+				$dbm->getManager()->flushPrivileges();
+				Database::needRoot(false);
+			}
+
+			// remove all databases
 			$databases_stmt = Database::prepare("
 				SELECT * FROM `" . TABLE_PANEL_DATABASES . "`
 				WHERE `customerid` = :id ORDER BY `dbserver`
@@ -1621,8 +1705,8 @@ class Customers extends ApiCommand implements ResourceEntity
 			$priv_changed = false;
 			while ($row_database = $databases_stmt->fetch(PDO::FETCH_ASSOC)) {
 				if ($last_dbserver != $row_database['dbserver']) {
-					Database::needRoot(true, $row_database['dbserver']);
 					$dbm->getManager()->flushPrivileges();
+					Database::needRoot(true, $row_database['dbserver']);
 					$last_dbserver = $row_database['dbserver'];
 				}
 				$dbm->getManager()->deleteDatabase($row_database['databasename']);

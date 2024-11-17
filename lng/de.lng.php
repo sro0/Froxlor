@@ -48,6 +48,7 @@ return [
 		'2fa_ga_desc' => 'Das Konto ist eingerichtet, um zeitbasierte Einmalpasswörter via Authenticator-App zu erhalten. Um die gewünschte Authenticator-App einzurichten, scanne bitte den untenstehenden QR-Code. Zum Deaktivieren, klicke auf "2FA deaktivieren"',
 		'2fa_not_activated' => 'Zwei-Faktor Authentifizierung ist nicht aktiviert',
 		'2fa_not_activated_for_user' => 'Zwei-Faktor Authentifizierung ist für den aktuellen Benutzer nicht aktiviert',
+		'type_2fa' => '2FA Status',
 	],
 	'admin' => [
 		'overview' => 'Übersicht',
@@ -408,7 +409,10 @@ return [
 			'description' => 'Hier kann ein eigenes RSS-Feed angegeben werden, welches den Kunden auf dem Dashboard angezeigt wird.<br /><small>Leerlassen um das offizielle Froxlor Newsfeed (https://inside.froxlor.org/news/) zu verwenden.</small>',
 		],
 		'movetoadmin' => 'Kunde verschieben',
-		'movecustomertoadmin' => 'Verschiebe den Kunden zum angegebenen Admin/Reseller<br /><small>Leerlassen für keine Änderung.<br />Wird der gewünschte Admin/Reseller hier nicht aufgelistet, hat er sein Kunden-Kontigent erreicht.</small>',
+		'movecustomertoadmin' => [
+			'title' => 'Verschiebe den Kunden zum angegebenen Admin/Reseller',
+			'description' => 'Leerlassen für keine Änderung.<br />Wird der gewünschte Admin/Reseller hier nicht aufgelistet, hat er sein Kunden-Kontigent erreicht.',
+		],
 		'note' => 'Hinweis',
 		'mod_fcgid_umask' => [
 			'title' => 'Umask (Standard: 022)',
@@ -432,8 +436,8 @@ return [
 			'description' => 'Die optionale "includeSubDomains" Direktive, wenn vorhanden, signalisiert dem UA, dass die HSTS Regel für diese Domain und auch jede Subdomain dieser gilt.',
 		],
 		'domain_hsts_preload' => [
-			'title' => 'Füge Domain in die <a href="https://hstspreload.org/" target="_blank">HSTS preload Liste</a> hinzu',
-			'description' => 'Wenn die Domain in die HSTS preload Liste, verwaltet von Chrome (und genutzt von Firefox und Safari), hinzugefügt werden soll, dann aktivieren Sie diese Einstellung.<br>Die preload-Direktive zu senden kann PERMANTENTE KONSEQUENZEN haben und dazu führen, dass Benutzer auf diese Domain und auch Subdomains nicht zugreifen können.<br>Beachten Sie die Details unter <a href="https://hstspreload.org/#removal" target="_blank">https://hstspreload.org/#removal</a> bevor ein Header mit "preload" gesendet wird.',
+			'title' => 'Füge Domain in die HSTS preload Liste hinzu',
+			'description' => 'Wenn die Domain in die <a href="https://hstspreload.org/" target="_blank">HSTS preload Liste</a>, verwaltet von Chrome (und genutzt von Firefox und Safari), hinzugefügt werden soll, dann aktivieren Sie diese Einstellung.<br>Die preload-Direktive zu senden kann PERMANTENTE KONSEQUENZEN haben und dazu führen, dass Benutzer auf diese Domain und auch Subdomains nicht zugreifen können.<br>Beachten Sie die Details unter <a href="https://hstspreload.org/#removal" target="_blank">https://hstspreload.org/#removal</a> bevor ein Header mit "preload" gesendet wird.',
 		],
 		'domain_ocsp_stapling' => [
 			'title' => 'OCSP stapling',
@@ -519,6 +523,7 @@ return [
 		'new_password_ifnotempty' => 'Neues Passwort (leer für keine Änderung)',
 		'also_change_ftp' => 'Auch Passwort des Haupt-FTP-Zugangs ändern',
 		'also_change_stats' => ' Auch Passwort der Statistikseite ändern',
+		'also_change_global_mysql' => 'Auch Passwort des globalen MySQL-Zugangs ändern',
 	],
 	'cron' => [
 		'cronname' => 'Cronjob-Name',
@@ -616,6 +621,10 @@ return [
 			'title' => 'Spam Level',
 			'description' => 'Erforderliche Punktzahl zum Markieren einer E-Mail als Spam<br/>Standard: 7.0'
 		],
+		'rewrite_subject' => [
+			'title' => 'Betreff ändern',
+			'description' => 'Dem E-Mail Betreff <strong>***SPAM***</strong> hinzufügen, sofern zutreffend',
+		],
 		'spam_kill_level' => [
 			'title' => 'Ablehnungs Level',
 			'description' => 'Erforderliche Punktzahl für das Ablehnen einer E-Mail<br/>Standard: 14.0'
@@ -628,6 +637,9 @@ return [
 			'title' => 'Verwende greylisting',
 			'description' => 'Eingehende E-Mails mittels <a href="https://de.wikipedia.org/wiki/Greylisting" target="_blank">Greylisting</a> schützen.<br/>Standard: Ja'
 		],
+		'required_spf_dns' => 'Erforderlicher SPF DNS Eintrag',
+		'required_dmarc_dns' => 'Erforderlicher DMARC DNS Eintrag',
+		'required_dkim_dns' => 'Erforderlicher DKIM DNS Eintrag',
 	],
 	'dns' => [
 		'destinationip' => 'Domain-IP-Adresse(n)',
@@ -706,6 +718,7 @@ return [
 		'hsts' => 'HSTS aktiviert',
 		'aliasdomainid' => 'ID der Alias-Domain',
 		'nodomainsassignedbyadmin' => 'Diesem Account wurde noch keine (aktive) Domain zugewiesen. Bitte kontaktiere deinen Administrator, wenn du der Meinung bist, das ist nicht korrekt.',
+		'email_only' => 'Nur E-Mail',
 	],
 	'emails' => [
 		'description' => 'Hier können Sie Ihre E-Mail-Adressen einrichten.<br />Ein Konto ist wie Ihr Briefkasten vor der Haustür. Wenn jemand eine E-Mail an Sie schreibt, wird diese in dieses Konto gelegt.<br /><br />Die Zugangsdaten lauten wie folgt: (Die Angaben in <i>kursiver</i> Schrift sind durch die jeweiligen Einträge zu ersetzen)<br /><br />Hostname: <b><i>Domainname</i></b><br />Benutzername: <b><i>Kontoname / E-Mail-Adresse</i></b><br />Passwort: <b><i>das gewählte Passwort</i></b>',
@@ -809,6 +822,7 @@ return [
 		'stringformaterror' => 'Der Wert des Feldes "%s" hat nicht das erwartete Format.',
 		'loginnameisusingprefix' => 'Sie können keinen Account anlegen, der mit "%s" beginnt, da dieser Prefix für die automatische Namensvergabe eingestellt ist. Bitte wählen Sie einen anderen Accountnamen.',
 		'loginnameissystemaccount' => 'Der Account "%s" existiert bereits auf dem System und kann daher nicht verwendet werden. Bitte wählen Sie einen anderen Accountnamen.',
+		'loginnameisreservedname' => 'Der Account-Name "%s" ist systemseitig reserviert und kann nicht verwenden werden.',
 		'youcantdeleteyourself' => 'Aus Sicherheitsgründen können Sie sich nicht selbst löschen.',
 		'youcanteditallfieldsofyourself' => 'Hinweis: Aus Sicherheitsgründen können Sie nicht alle Felder Ihres eigenen Accounts bearbeiten.',
 		'documentrootexists' => 'Es existiert noch ein Verzeichnis "%s" für diesen Kunden. Bitte löschen Sie dieses vorher.',
@@ -975,7 +989,7 @@ return [
 		'editpassdescription' => 'Neues Passwort setzen oder leer für keine Änderung.',
 	],
 	'gender' => [
-		'title' => 'Geschlecht',
+		'title' => 'Anrede',
 		'male' => 'Herr',
 		'female' => 'Frau',
 		'undef' => '',
@@ -1023,6 +1037,7 @@ return [
 		'combination_not_found' => 'Kombination aus Benutzername und E-Mail Adresse stimmen nicht überein.',
 		'2fa' => 'Zwei-Faktor Authentifizierung (2FA)',
 		'2facode' => 'Bitte 2FA Code angeben',
+		'2faremember' => 'Browser vertrauen',
 	],
 	'mails' => [
 		'pop_success' => [
@@ -1130,6 +1145,7 @@ Vielen Dank, Ihr Administrator',
 	],
 	'message' => [
 		'norecipients' => 'Es wurde keine E-Mail versendet, da sich keine Empfänger in der Datenbank befinden',
+		'success' => 'Nachricht erfolgreich an "%s" Empfänger gesendet',
 	],
 	'mysql' => [
 		'databasename' => 'Benutzer-/Datenbankname',
@@ -1143,7 +1159,9 @@ Vielen Dank, Ihr Administrator',
 		'privileged_passwd' => 'Passwort für privilegierten Benutzer',
 		'unprivileged_passwd' => 'Passwort für nicht privilegierten Benutzer',
 		'mysql_ssl_ca_file' => 'SSL-Serverzertifikat',
-		'mysql_ssl_verify_server_certificate' => 'Verifizieren des SSL-Serverzertifikats'
+		'mysql_ssl_verify_server_certificate' => 'Verifizieren des SSL-Serverzertifikats',
+		'globaluserinfo' => 'Um auf Datenbanken zuzugreifen, kann zusätzlich der Froxlor-Login (Benutzer: %s) verwendet werden, dieser hat automatisch Zugriff auf alle Datenbanken.<br />Es wird empfohlen diesen <b>nicht</b> für Applikationen zu nutzen, lediglich zur Administration (z.B. via phpMyAdmin).',
+		'edit_global_user' => 'Admin Benutzer bearbeiten',
 	],
 	'panel' => [
 		'edit' => 'bearbeiten',
@@ -1248,6 +1266,7 @@ Vielen Dank, Ihr Administrator',
 		'upload_import' => 'Hochladen und importieren',
 		'profile' => 'Mein Profil',
 		'use_checkbox_for_unlimited' => 'Der Wert "0" deaktiviert die Resource. Die Checkbox rechts erlaubt "unlimitierte" Nutzung.',
+		'use_checkbox_to_disable' => 'Zum Deaktivieren, klicke die Checkbox auf der rechten Seite des Eingabefeldes',
 	],
 	'phpfpm' => [
 		'vhost_httpuser' => 'Lokaler Benutzer für PHP-FPM (Froxlor-Vhost)',
@@ -1276,7 +1295,7 @@ Vielen Dank, Ihr Administrator',
 	'question' => [
 		'question' => 'Sicherheitsabfrage',
 		'admin_customer_reallydelete' => 'Wollen Sie den Kunden "%s" wirklich löschen?<br />ACHTUNG! Alle Daten gehen unwiderruflich verloren! Nach dem Vorgang müssen die Daten manuell aus dem Dateisystem entfernt werden.',
-		'admin_domain_reallydelete' => 'Wollen Sie die Domain "%s" wirklich löschen?',
+		'admin_domain_reallydelete' => 'Wollen Sie die Domain "%s" wirklich löschen?<br><span class="text-danger"><strong>ACHTUNG:</strong> Alle Subdomains, FTP-Konten und E-Mail Adressen/Konten, welche mit dieser Domain verbunden sind, werden gelöscht!</span>',
 		'admin_domain_reallydisablesecuritysetting' => 'Wollen Sie die wichtige Sicherheitseinstellung \'OpenBasedir\' wirklich deaktivieren?',
 		'admin_admin_reallydelete' => 'Wollen Sie den Admin "%s" wirklich löschen?<br />Alle Kunden und Domains dieses Admins werden Ihnen zugeteilt.',
 		'admin_template_reallydelete' => 'Wollen Sie die Vorlage "%s" wirklich löschen?',
@@ -1811,7 +1830,7 @@ Vielen Dank, Ihr Administrator',
 		],
 		'documentroot_use_default_value' => [
 			'title' => 'Verwende Domainnamen im Documentroot',
-			'description' => 'Wenn aktiviert wird dem standard Documentroot zusätzlich der Domain-Name angehängt.<br /><br />Beispiel:<br />/var/customers/customer_name/example.tld/<br />/var/customers/customer_name/subdomain.example.tld/',
+			'description' => 'Wenn aktiviert wird dem standard Documentroot zusätzlich der Domain-Name angehängt.<br /><br />Beispiel:<br />/var/customers/webs/customer_name/example.tld/<br />/var/customers/webs/customer_name/subdomain.example.tld/',
 		],
 		'panel_phpconfigs_hidesubdomains' => [
 			'title' => 'Verstecke Subdomains in PHP-Konfigurations-Übersicht',
@@ -1823,6 +1842,7 @@ Vielen Dank, Ihr Administrator',
 		],
 		'passwordcryptfunc' => [
 			'title' => 'Wählen Sie die zu verwendende Passwort-Verschlüsselungsmethode',
+			'description' => 'Wählen Sie, welche Methode zur Verschlüsselung von Kennwörtern verwendet werden soll. Wenn Sie diese Einstellung ändern, werden nur neue Kennwörter mit der neuen Methode verschlüsselt. Bestehende Passwörter werden nicht geändert.'
 		],
 		'systemdefault' => 'Systemstandard',
 		'panel_allow_theme_change_admin' => 'Erlaube Admins das Theme zu wechseln',
@@ -2125,7 +2145,6 @@ Vielen Dank, Ihr Administrator',
 		'dmarc_entry' => 'DMARC-Eintrag für alle Domains',
 	],
 	'success' => [
-		'messages_success' => 'Nachricht erfolgreich an "%s" Empfänger gesendet',
 		'success' => 'Information',
 		'clickheretocontinue' => 'Hier klicken, um fortzufahren',
 		'settingssaved' => 'Die Einstellungen wurden erfolgreich gespeichert.',
@@ -2147,9 +2166,10 @@ Vielen Dank, Ihr Administrator',
 		'CREATE_FTP' => 'Erstelle Verzeichnis für neuen FTP-Benutzer',
 		'DELETE_CUSTOMER_FILES' => 'Löschen von Kunden-Dateien %s',
 		'noneoutstanding' => 'Zur Zeit gibt es keine ausstehenden Aufgaben für Froxlor',
-		'CREATE_QUOTA' => 'Quota auf dem Dateisystem setzen',
 		'DELETE_EMAIL_DATA' => 'E-Mail-Dateien des Kunden löschen',
 		'DELETE_FTP_DATA' => 'Kunden FTP-Konto Dateien löschen',
+		'REBUILD_RSPAMD' => 'Neuerstellung der Antispam-Konfiguration',
+		'CREATE_QUOTA' => 'Quota auf dem Dateisystem setzen',
 		'REBUILD_CRON' => 'Neuerstellung der cron.d-Datei',
 		'CREATE_CUSTOMER_DATADUMP' => 'Daten-Export für Kunde %s',
 		'DELETE_DOMAIN_PDNS' => 'Lösche Domain %s von PowerDNS Datenbank',
@@ -2287,7 +2307,7 @@ Vielen Dank, Ihr Administrator',
 		'install' => [
 			'top' => 'Abschluss',
 			'title' => 'Ein letzter Schritt...',
-			'description' => 'Der untenstehende Befehl lädt, installiert und konfiguriert die benötigten Dienste auf dem System aufgrund der Angaben die während des Installationsprozessen gesammelt wurden.<br><br><span class="text-danger">Führe die gezeigten Befehle als <b>root</b> in der Shell/Konsole des Servers aus.</span>',
+			'description' => 'Der untenstehende Befehl lädt, installiert und konfiguriert die benötigten Dienste auf dem System aufgrund der Angaben die während des Installationsprozessen gesammelt wurden.<br><br><span class="text-danger">Führe die gezeigten Befehle als <b>root</b> in der Shell/Konsole des Servers aus. <b>Beachte bitte</b> das dieser Befehl vorhandene Konfigurationen <b>überschreibt</b> (Sicherungsdateien werden erstellt)!<br>Sollte dies nicht gewünscht sein, wähle <i>Ich werden die Dienste manuell konfigurieren</i> am Ende dieser Seite.</span>',
 			'runcmd' => 'Folgende Befehle ausführen, um die Installation abzuschließen:',
 			'manual_config' => 'Ich werden die Dienste manuell konfigurieren, direkt zum Login umleiten',
 			'waitforconfig' => 'Warte auf Abschluss der Dienstkonfiguration...',

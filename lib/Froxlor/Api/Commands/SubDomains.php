@@ -296,21 +296,24 @@ class SubDomains extends ApiCommand implements ResourceEntity
 				// assign default config
 				$phpsid_result['phpsettingid'] = 1;
 			}
-			// check whether the customer has chosen its own php-config
-			if ($phpsettingid > 0 && $phpsettingid != $phpsid_result['phpsettingid']) {
-				$phpsid_result['phpsettingid'] = intval($phpsettingid);
-			}
 
-			$allowed_phpconfigs = $customer['allowed_phpconfigs'];
-			if (!empty($allowed_phpconfigs)) {
-				$allowed_phpconfigs = json_decode($allowed_phpconfigs, true);
-			} else {
-				$allowed_phpconfigs = [];
-			}
-			// only with fcgid/fpm enabled will it be possible to select a php-setting
-			if ((int)Settings::Get('system.mod_fcgid') == 1 || (int)Settings::Get('phpfpm.enabled') == 1) {
-				if (!in_array($phpsid_result['phpsettingid'], $allowed_phpconfigs)) {
-					Response::standardError('notallowedphpconfigused', '', true);
+			if ($domain_check['phpenabled'] == 1) {
+				// check whether the customer has chosen its own php-config
+				if ($phpsettingid > 0 && $phpsettingid != $phpsid_result['phpsettingid']) {
+					$phpsid_result['phpsettingid'] = intval($phpsettingid);
+				}
+
+				$allowed_phpconfigs = $customer['allowed_phpconfigs'];
+				if (!empty($allowed_phpconfigs)) {
+					$allowed_phpconfigs = json_decode($allowed_phpconfigs, true);
+				} else {
+					$allowed_phpconfigs = [];
+				}
+				// only with fcgid/fpm enabled will it be possible to select a php-setting
+				if ((int)Settings::Get('system.mod_fcgid') == 1 || (int)Settings::Get('phpfpm.enabled') == 1) {
+					if (!in_array($phpsid_result['phpsettingid'], $allowed_phpconfigs)) {
+						Response::standardError('notallowedphpconfigused', '', true);
+					}
 				}
 			}
 
@@ -797,7 +800,7 @@ class SubDomains extends ApiCommand implements ResourceEntity
 			$allowed_phpconfigs = [];
 		}
 		// only with fcgid/fpm enabled will it be possible to select a php-setting
-		if ((int)Settings::Get('system.mod_fcgid') == 1 || (int)Settings::Get('phpfpm.enabled') == 1) {
+		if ((int)$result['phpenabled'] == 1 && ((int)Settings::Get('system.mod_fcgid') == 1 || (int)Settings::Get('phpfpm.enabled') == 1)) {
 			if (!in_array($phpsettingid, $allowed_phpconfigs)) {
 				Response::standardError('notallowedphpconfigused', '', true);
 			}
@@ -980,9 +983,11 @@ class SubDomains extends ApiCommand implements ResourceEntity
 				'`d`.`letsencrypt`',
 				'`d`.`registration_date`',
 				'`d`.`termination_date`',
-				'`d`.`deactivated`'
+				'`d`.`deactivated`',
+				'`d`.`email_only`',
 			];
 		}
+
 		$query_fields = [];
 
 		// prepare select statement
@@ -993,7 +998,6 @@ class SubDomains extends ApiCommand implements ResourceEntity
 			LEFT JOIN `" . TABLE_PANEL_DOMAINS . "` `da` ON `da`.`aliasdomain`=`d`.`id`
 			LEFT JOIN `" . TABLE_PANEL_DOMAINS . "` `pd` ON `pd`.`id`=`d`.`parentdomainid`
 			WHERE `d`.`customerid` IN (" . implode(', ', $customer_ids) . ")
-			AND `d`.`email_only` = '0'
 			" . $this->getSearchWhere($query_fields, true) . " GROUP BY `d`.`id` ORDER BY `parentdomainname` ASC, `d`.`parentdomainid` ASC " . $this->getOrderBy(true) . $this->getLimit());
 
 		$result = [];
@@ -1089,13 +1093,13 @@ class SubDomains extends ApiCommand implements ResourceEntity
 				$this->getUserDetail('customerid')
 			];
 		}
+
 		if (!empty($customer_ids)) {
 			// prepare select statement
 			$domains_stmt = Database::prepare("
 				SELECT COUNT(*) as num_subdom
 				FROM `" . TABLE_PANEL_DOMAINS . "` `d`
 				WHERE `d`.`customerid` IN (" . implode(', ', $customer_ids) . ")
-				AND `d`.`email_only` = '0'
 			");
 			$result = Database::pexecute_first($domains_stmt, null, true, true);
 			if ($result) {

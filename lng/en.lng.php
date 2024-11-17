@@ -29,7 +29,7 @@ return [
 		'de' => 'German',
 		'en' => 'English',
 		'fr' => 'French',
-		'it' => 'Italia',
+		'it' => 'Italian',
 		'nl' => 'Dutch',
 		'pt' => 'Portuguese',
 		'se' => 'Swedish',
@@ -49,6 +49,7 @@ return [
 		'2fa_ga_desc' => 'Your account is set up to use time-based one-time passwords via authenticator-app. Please scan the QR code below with your desired authenticator app to generate the codes. To deactivate, click on "Deactivate 2FA"',
 		'2fa_not_activated' => 'Two-factor authentication is not enabled',
 		'2fa_not_activated_for_user' => 'Two-factor authentication is not enabled for the current user',
+		'type_2fa' => '2FA status',
 	],
 	'admin' => [
 		'overview' => 'Overview',
@@ -172,7 +173,7 @@ return [
 			'USR_PASS' => 'FTP password',
 			'USR_PATH' => 'FTP homedir (relative to customer-docroot)',
 			'forgotpwd' => 'Notification-mails for password-reset',
-			'password_reset' => 'Customer-notification for passwort-reset',
+			'password_reset' => 'Customer-notification for password-reset',
 			'trafficmaxpercent' => 'Notification mail for customers when given maximum of percent of traffic is exhausted',
 			'MAX_PERCENT' => 'Replaced with the diskusage/traffic limit for sending reports in percent.',
 			'USAGE_PERCENT' => 'Replaced with the diskusage/traffic, which was exhausted by the customer in percent.',
@@ -413,7 +414,10 @@ return [
 			'description' => 'Specify a custom RSS-feed that will be shown to your customers on their dashboard.<br /><small>Leave this empty to use the official froxlor newsfeed (https://inside.froxlor.org/news/).</small>',
 		],
 		'movetoadmin' => 'Move customer',
-		'movecustomertoadmin' => 'Move customer to the selected admin/reseller<br /><small>Leave this empty for no change.<br />If the desired admin does not show up in the list, his customer-limit has been reached.</small>',
+		'movecustomertoadmin' => [
+			'title' => 'Move customer to the selected admin/reseller',
+			'description' => 'Leave this empty for no change.<br />If the desired admin does not show up in the list, his customer-limit has been reached.',
+		],
 		'note' => 'Note',
 		'mod_fcgid_umask' => [
 			'title' => 'Umask (default: 022)',
@@ -440,8 +444,8 @@ return [
 			'description' => 'The optional "includeSubDomains" directive, if present, signals the UA that the HSTS Policy applies to this HSTS Host as well as any subdomains of the host\'s domain name.',
 		],
 		'domain_hsts_preload' => [
-			'title' => 'Include domain in <a href="https://hstspreload.org/" target="_blank">HSTS preload list</a>',
-			'description' => 'If you would like this domain to be included in the HSTS preload list maintained by Chrome (and used by Firefox and Safari), then use activate this.<br>Sending the preload directive from your site can have PERMANENT CONSEQUENCES and prevent users from accessing your site and any of its subdomains.<br>Please read the details at <a href="https://hstspreload.org/#removal" target="_blank">https://hstspreload.org/#removal</a> before sending the header with "preload".',
+			'title' => 'Include domain in HSTS preload list',
+			'description' => 'If you would like this domain to be included in the <a href="https://hstspreload.org/" target="_blank">HSTS preload list</a> maintained by Chrome (and used by Firefox and Safari), then use activate this.<br>Sending the preload directive from your site can have PERMANENT CONSEQUENCES and prevent users from accessing your site and any of its subdomains.<br>Please read the details at <a href="https://hstspreload.org/#removal" target="_blank">https://hstspreload.org/#removal</a> before sending the header with "preload".',
 		],
 		'domain_ocsp_stapling' => [
 			'title' => 'OCSP stapling',
@@ -566,6 +570,7 @@ return [
 		'new_password_ifnotempty' => 'New password (empty = no change)',
 		'also_change_ftp' => ' also change password of the main FTP account',
 		'also_change_stats' => ' also change password for the statistics page',
+		'also_change_global_mysql' => 'also change password for global MySQL account',
 	],
 	'cron' => [
 		'cronname' => 'cronjob-name',
@@ -665,6 +670,10 @@ return [
 			'title' => 'Spam tag level',
 			'description' => 'Score that is required to mark an email as spam<br/>Default: 7.0'
 		],
+		'rewrite_subject' => [
+			'title' => 'Rewrite subject',
+			'description' => 'Whether to add <strong>***SPAM***</strong> to the email subject if applicable',
+		],
 		'spam_kill_level' => [
 			'title' => 'Spam kill level',
 			'description' => 'Score that is required to discard an email entirely<br/>Default: 14.0'
@@ -677,6 +686,9 @@ return [
 			'title' => 'Use greylisting',
 			'description' => 'Incoming emails will be protected by <a href="https://en.wikipedia.org/wiki/Greylisting_(email)" target="_blank">greylisting</a>.<br/>Default: yes'
 		],
+		'required_spf_dns' => 'Required SPF DNS entry',
+		'required_dmarc_dns' => 'Required DMARC DNS entry',
+		'required_dkim_dns' => 'Required DKIM DNS entry',
 	],
 	'dns' => [
 		'destinationip' => 'Domain IP(s)',
@@ -777,6 +789,7 @@ return [
 		'hsts' => 'HSTS enabled',
 		'aliasdomainid' => 'ID of alias domain',
 		'nodomainsassignedbyadmin' => 'Your account has currently no (active) domains assigned to it. Please contact your administrator if you think this is wrong.',
+		'email_only' => 'Email only',
 	],
 	'emails' => [
 		'description' => 'Here you can create and change your email addresses.<br />An account is like your letterbox in front of your house. If someone sends you an email, it will be dropped into the account.<br /><br />To download your emails use the following settings in your mailprogram: (The data in <i>italics</i> has to be changed to the equivalents you typed in!)<br />Hostname: <b><i>domainname</i></b><br />Username: <b><i>account name / e-mail address</i></b><br />password: <b><i>the password you\'ve chosen</i></b>',
@@ -881,6 +894,7 @@ return [
 		'stringformaterror' => 'The value for the field "%s" is not in the expected format.',
 		'loginnameisusingprefix' => 'You cannot create accounts that begin with "%s", as this prefix is set to be used for the automatic account-naming. Please enter another account name.',
 		'loginnameissystemaccount' => 'The account "%s" already exists on the system and cannot be used. Please enter another account name.',
+		'loginnameisreservedname' => 'The account-name "%s" is reserved for system internals and cannot be used.',
 		'youcantdeleteyourself' => 'You cannot delete yourself for security reasons.',
 		'youcanteditallfieldsofyourself' => 'Note: You cannot edit all fields of your own account for security reasons.',
 		'documentrootexists' => 'The directory "%s" already exists for this customer. Please remove this before adding the customer again.',
@@ -1095,6 +1109,7 @@ return [
 		'combination_not_found' => 'Combination of user and email address not found.',
 		'2fa' => 'Two-factor authentication (2FA)',
 		'2facode' => 'Please enter 2FA code',
+		'2faremember' => 'Trust browser',
 	],
 	'mails' => [
 		'pop_success' => [
@@ -1202,6 +1217,7 @@ Yours sincerely, your administrator',
 	],
 	'message' => [
 		'norecipients' => 'No e-mail has been sent because there are no recipients in the database',
+		'success' => 'Successfully sent message to %s recipients',
 	],
 	'mysql' => [
 		'databasename' => 'User/Database name',
@@ -1215,7 +1231,9 @@ Yours sincerely, your administrator',
 		'privileged_passwd' => 'Password for privileged user',
 		'unprivileged_passwd' => 'Password for unprivileged user',
 		'mysql_ssl_ca_file' => 'SSL server certificate',
-		'mysql_ssl_verify_server_certificate' => 'Verify SSL server certificate'
+		'mysql_ssl_verify_server_certificate' => 'Verify SSL server certificate',
+		'globaluserinfo' => 'To access your databases, you can additionally use your froxlor login (user: %s) which automatically has access to all your databases.<br />It is recommended <b>not</b> to use this for applications, only for administration (e.g. via phpMyAdmin).',
+		'edit_global_user' => 'Edit admin user',
 	],
 	'opcacheinfo' => [
 		'generaltitle' => 'General Information',
@@ -1363,6 +1381,7 @@ Yours sincerely, your administrator',
 		'upload_import' => 'Upload and import',
 		'profile' => 'My profile',
 		'use_checkbox_for_unlimited' => 'The value "0" deactivates this resource. The checkbox on the right allows "unlimited" usage.',
+		'use_checkbox_to_disable' => 'To disable, activate the checkbox on the right of the input field',
 	],
 	'phpfpm' => [
 		'vhost_httpuser' => 'Local user to use for PHP-FPM (Froxlor vHost)',
@@ -1391,7 +1410,7 @@ Yours sincerely, your administrator',
 	'question' => [
 		'question' => 'Security question',
 		'admin_customer_reallydelete' => 'Do you really want to delete the customer %s? This cannot be undone!',
-		'admin_domain_reallydelete' => 'Do you really want to delete the domain %s?',
+		'admin_domain_reallydelete' => 'Do you really want to delete the domain %s?<br><span class="text-danger"><strong>NOTE:</strong> All subdomains, ftp-accounts and email-addresses/accounts connected to this domain will be removed!</span>',
 		'admin_domain_reallydisablesecuritysetting' => 'Do you really want to disable this security setting OpenBasedir?',
 		'admin_admin_reallydelete' => 'Do you really want to delete the admin %s? Every customer and domain will be reassigned to your account.',
 		'admin_template_reallydelete' => 'Do you really want to delete the template \'%s\'?',
@@ -1933,7 +1952,7 @@ Yours sincerely, your administrator',
 		],
 		'documentroot_use_default_value' => [
 			'title' => 'Use domain name as default value for DocumentRoot path',
-			'description' => 'If enabled and DocumentRoot path is empty, default value will be the (sub)domain name.<br /><br />Examples: <br />/var/customers/customer_name/example.com/<br />/var/customers/customer_name/subdomain.example.com/',
+			'description' => 'If enabled and DocumentRoot path is empty, default value will be the (sub)domain name.<br /><br />Examples: <br />/var/customers/webs/customer_name/example.com/<br />/var/customers/webs/customer_name/subdomain.example.com/',
 		],
 		'panel_phpconfigs_hidesubdomains' => [
 			'title' => 'Hide subdomains in PHP-configuration overview',
@@ -1945,6 +1964,7 @@ Yours sincerely, your administrator',
 		],
 		'passwordcryptfunc' => [
 			'title' => 'Choose which password-crypt method is to be used',
+			'description' => 'Choose which password-crypt method is to be used. If you change this setting, only new passwords will be encrypted with the new method. Existing passwords will not be changed.',
 		],
 		'systemdefault' => 'System default',
 		'panel_allow_theme_change_admin' => 'Allow admins to change the theme',
@@ -2259,7 +2279,6 @@ Yours sincerely, your administrator',
 		'issuer' => 'Issuer',
 	],
 	'success' => [
-		'messages_success' => 'Successfully sent message to %s recipients',
 		'success' => 'Information',
 		'clickheretocontinue' => 'Click here to continue',
 		'settingssaved' => 'The settings have been successfully saved.',
@@ -2281,9 +2300,10 @@ Yours sincerely, your administrator',
 		'CREATE_FTP' => 'Creating directory for new ftp-user',
 		'DELETE_CUSTOMER_FILES' => 'Deleting customer-files %s',
 		'noneoutstanding' => 'There are currently no outstanding tasks for Froxlor',
-		'CREATE_QUOTA' => 'Set quota on filesystem',
 		'DELETE_EMAIL_DATA' => 'Delete customer e-mail data.',
 		'DELETE_FTP_DATA' => 'Delete customer ftp-account data.',
+		'REBUILD_RSPAMD' => 'Rebuilding antispam-configuration.',
+		'CREATE_QUOTA' => 'Set quota on filesystem',
 		'REBUILD_CRON' => 'Rebuilding the cron.d-file',
 		'CREATE_CUSTOMER_DATADUMP' => 'Data export job for customer %s',
 		'DELETE_DOMAIN_PDNS' => 'Delete domain %s from PowerDNS database',
@@ -2423,7 +2443,7 @@ Yours sincerely, your administrator',
 		'install' => [
 			'top' => 'Finish setup',
 			'title' => 'One last step...',
-			'description' => 'The command below will download, install and configure required services on your system according to the data you have given in this installation process.<br><br><span class="text-danger">Be sure to run the following command as <b>root</b> on the server\'s shell/terminal.</span>',
+			'description' => 'The command below will download, install and configure required services on your system according to the data you have given in this installation process.<br><br><span class="text-danger">Be sure to run the following command as <b>root</b> on the server\'s shell/terminal and <b>be aware</b> that this command will <b>overwrite</b> any existing configuration for the used services (backups will be created)!.<br>If you do not want to overwrite any configurations, select <i>I will manually configure the services</i> at the bottom of this page!</span>',
 			'runcmd' => 'Run the following command to finish the installation:',
 			'manual_config' => 'I will manually configure the services, just take me to the login',
 			'waitforconfig' => 'Waiting for services to be configured...',
